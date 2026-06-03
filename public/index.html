@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Scrabble Pro | Deutsch</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Background Glow Accents -->
+  <div class="glow glow-1"></div>
+  <div class="glow glow-2"></div>
+
+  <!-- MAIN APP WRAPPER -->
+  <main class="app-container">
+    
+    <!-- LOBBY SCREEN (Lobby erstellen / beitreten) -->
+    <section id="lobby-screen" class="card active">
+      <header class="lobby-header" style="position: relative;">
+        <button class="btn-icon-circle fullscreen-toggle" title="Vollbild" style="position: absolute; top: 0; right: 0;">⛶</button>
+        <h1 class="logo-text">Scrabble <span class="accent-text">Pro</span></h1>
+        <p class="subtitle-text">Das deutsche Wortduell</p>
+      </header>
+
+      <div class="lobby-form">
+        <div class="input-group">
+          <label for="player-name-input">Dein Name</label>
+          <input type="text" id="player-name-input" placeholder="Z.B. Max Mustermann" maxlength="15">
+        </div>
+
+        <div class="actions-stack">
+          <button id="btn-create-lobby" class="btn btn-primary">Lobby erstellen</button>
+          
+          <div class="divider">
+            <span>ODER BEITRETEN</span>
+          </div>
+
+          <div class="input-group">
+            <label for="room-code-input">Lobby-Code (4-stellig)</label>
+            <input type="text" id="room-code-input" placeholder="Z.B. ABCD" maxlength="4" style="text-transform: uppercase;">
+          </div>
+          <button id="btn-join-lobby" class="btn btn-secondary">Lobby beitreten</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- WAITING ROOM SCREEN -->
+    <section id="waiting-screen" class="card">
+      <header class="lobby-header" style="position: relative;">
+        <button class="btn-icon-circle fullscreen-toggle" title="Vollbild" style="position: absolute; top: 0; right: 0;">⛶</button>
+        <h1 class="logo-text">Lobby <span class="room-code-badge" id="lobby-code-display">----</span></h1>
+        <p class="subtitle-text">Warte auf Mitspieler...</p>
+      </header>
+
+      <!-- Share Stack -->
+      <div class="share-box">
+        <p class="share-title">Mitspieler einladen:</p>
+        <div class="share-row">
+          <span class="invite-link-text" id="invite-link-display">Link wird geladen...</span>
+          <button id="btn-copy-link" class="btn-icon" title="Link kopieren">
+            📋
+          </button>
+        </div>
+        <button id="btn-whatsapp-share" class="btn btn-whatsapp">
+          <span>Auf WhatsApp teilen</span>
+        </button>
+      </div>
+
+      <!-- Player List in Lobby -->
+      <div class="player-list-section">
+        <h3>Bereitstehende Spieler (<span id="lobby-count-display">0</span>/4):</h3>
+        <ul id="lobby-player-list" class="players-list-grid">
+          <!-- Populated by JS -->
+        </ul>
+      </div>
+
+      <div class="waiting-actions">
+        <button id="btn-start-game" class="btn btn-primary" style="display: none;">Spiel starten</button>
+        <p id="host-only-msg" class="helper-text">Warten auf den Host, um das Spiel zu starten.</p>
+      </div>
+    </section>
+
+    <!-- GAME BOARD SCREEN -->
+    <section id="game-screen" class="game-layout">
+      <!-- Top Navigation & Scoreboard -->
+      <header class="game-header">
+        <div class="game-meta-row">
+          <div class="logo-sub">Scrabble <span class="accent-text">Pro</span> (<span id="game-room-code">----</span>)</div>
+          <div class="header-buttons">
+            <button class="btn-icon-circle fullscreen-toggle" title="Vollbild">⛶</button>
+            <button id="btn-open-options" class="btn-icon-circle" title="Optionen">⚙️</button>
+            <button id="btn-forfeit" class="btn btn-danger-sm">Aufgeben</button>
+          </div>
+        </div>
+
+        <!-- Scoreboard Slider -->
+        <div class="scoreboard" id="game-scoreboard">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Turn Status Indicator in Scoreboard area -->
+        <div class="turn-status-banner-mini" id="turn-banner">
+          Warten auf Spielstart...
+        </div>
+
+        <!-- Mini Player Chat under turn status banner -->
+        <div class="chat-container-mini">
+          <div class="chat-messages-mini" id="chat-messages">
+            <div class="chat-line-placeholder">Sag Hallo zu deinen Mitspielern!</div>
+          </div>
+          <div class="chat-input-row">
+            <input type="text" id="chat-input" placeholder="Chat..." maxlength="60">
+            <button id="btn-send-chat" class="btn-chat-submit">Senden</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Playfield and Camera Control Wrapper -->
+      <div class="board-viewport-container">
+        <!-- Live Wortwertanzeige Overlay -->
+        <div id="word-value-overlay" class="word-preview-badge" style="display: none;">
+          Aktuelles Wort: <span id="preview-word-text">---</span> (<span id="preview-score-text">0</span> Pkt)
+        </div>
+
+        <!-- Zoomable Scroll Frame -->
+        <div class="zoom-viewport" id="zoom-viewport">
+          <div class="scrabble-board-grid" id="scrabble-board">
+            <!-- 15x15 Cells populated by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Spielfeld Zoom Slider directly below board -->
+      <div class="zoom-control-panel">
+        <span class="zoom-label">🔍 Zoom: <strong id="zoom-label-display">Auto-Fit</strong></span>
+        <input type="range" id="options-zoom-slider" min="60" max="150" value="100" class="range-slider">
+      </div>
+
+      <!-- Lower Controls & Player Area -->
+      <footer class="player-area">
+        <!-- Rack for 7 tiles -->
+        <div class="rack-outer-container">
+          <div class="tile-rack" id="tile-rack">
+            <!-- 7 Tiles populated by JS -->
+          </div>
+        </div>
+
+        <!-- Control Actions Grid -->
+        <div class="controls-actions-grid">
+          <button id="btn-pass" class="btn btn-control">Aussetzen</button>
+          <button id="btn-swap" class="btn btn-control">Tauschen</button>
+          <button id="btn-recall" class="btn btn-control" title="Alle Steine zurückholen">Zurückholen</button>
+          <button id="btn-submit" class="btn btn-submit-game">Senden</button>
+        </div>
+
+        <!-- Game History & Bag Info Drawer -->
+        <div class="history-drawer">
+          <div class="drawer-header">
+            <span class="bag-count-indicator">🎒 Beutel: <strong id="bag-count-display">--</strong> Steine übrig</span>
+            <button id="btn-toggle-history" class="btn-text">📜 Verlauf anzeigen</button>
+          </div>
+          
+          <div class="drawer-content collapsed" id="history-content">
+            <div class="turn-history-list" id="turn-history-list">
+              <!-- Chronological play logs -->
+            </div>
+          </div>
+        </div>
+      </footer>
+    </section>
+
+  </main>
+
+  <!-- MODALS SYSTEM -->
+  
+  <!-- 1. Options Modal -->
+  <div class="modal-overlay" id="modal-options">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Spieloptionen</h2>
+        <button class="btn-close modal-close-trigger">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="option-row">
+          <span class="option-label">Audio & Sounds</span>
+          <label class="switch">
+            <input type="checkbox" id="options-audio-toggle" checked>
+            <span class="slider-toggle"></span>
+          </label>
+        </div>
+
+
+
+        <div class="rules-section">
+          <h3>📜 Kurze Spielregeln (Deutsch)</h3>
+          <ul>
+            <li>Der erste Spielzug muss das Center-Feld (Mitte mit Stern) abdecken.</li>
+            <li>Wörter müssen waagerecht oder senkrecht gelegt werden und durchgehend sein.</li>
+            <li>Jeder Zug muss an ein bestehendes Wort anknüpfen.</li>
+            <li><strong>Premiumfelder:</strong> Doppelte/Dreifache Buchstaben- (DL/TL) bzw. Wortwerte (DW/TW) gelten nur für neu gelegte Steine in dieser Runde.</li>
+            <li><strong>Bingo:</strong> Wer alle 7 Steine in einem Zug legt, erhält 50 Punkte extra!</li>
+            <li><strong>Rechtsklick / Gedrückthalten:</strong> Du kannst Wörter im Verlauf oder auf dem Brett anklicken, um die Bedeutung zu sehen oder sie als ungültig <strong>herauszufordern</strong>! Wenn das Wort doch gültig ist, verlierst du 10 Punkte 🙂</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Swap Tiles Modal -->
+  <div class="modal-overlay" id="modal-swap">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Steine tauschen</h2>
+        <button class="btn-close modal-close-trigger">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">Wähle die Steine aus, die du in den Beutel zurücklegen und tauschen möchtest:</p>
+        <div class="swap-selection-grid" id="swap-selection-grid">
+          <!-- Player's current tiles, clickable to select -->
+        </div>
+        <div class="modal-actions">
+          <button id="btn-confirm-swap" class="btn btn-primary w-full">Ausgewählte Steine tauschen</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Word Details & Challenge Modal -->
+  <div class="modal-overlay" id="modal-word-info">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="word-title-display">Wort-Info</h2>
+        <button class="btn-close modal-close-trigger">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="validation-status-badge" id="word-validation-badge">
+          Prüfung läuft...
+        </div>
+        
+        <div class="definition-container">
+          <p id="word-definition-display" class="definition-text">Definition wird gesucht...</p>
+        </div>
+
+        <div class="challenge-box-panel" id="challenge-panel" style="display: none;">
+          <div class="alert alert-warning">
+            ⚠️ <strong>Herausforderung möglich:</strong> Wenn du glaubst, dass dieses Wort im deutschen Scrabble ungültig ist, kannst du es herausfordern!
+          </div>
+          <p class="helper-text-sm">Bei Erfolg wird der gesamte Zug zurückgesetzt. Bei Misserfolg verlierst du 10 Punkte.</p>
+          <button id="btn-trigger-challenge" class="btn btn-danger w-full">Zug herausfordern!</button>
+        </div>
+
+        <div class="modal-actions-stacked">
+          <a id="link-duden-lookup" href="#" target="_blank" class="btn btn-secondary text-center">Im Duden nachschlagen ↗</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Custom Notification Alert/Confirm Modal -->
+  <div class="modal-overlay" id="modal-alert">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="alert-title-display">Hinweis</h2>
+        <button class="btn-close modal-close-trigger" id="btn-alert-close">×</button>
+      </div>
+      <div class="modal-body">
+        <p id="alert-message-display" style="font-size: 0.9rem; line-height: 1.5; color: var(--text-muted);"></p>
+        <div style="margin-top: 20px; display: flex; gap: 8px;">
+          <button id="btn-alert-ok" class="btn btn-primary w-full">OK</button>
+          <button id="btn-alert-cancel" class="btn btn-secondary w-full" style="display: none;">Abbrechen</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Socket.IO and Game Logic Scripts -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="scrabble-engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+Rolle: Du bist ein erfahrener Full-Stack-Softwareentwickler und Game-Designer.
+
+Projektziel: Erstelle die Architektur und den Code für ein webbasiertes Multiplayer-Scrabble-Spiel auf Deutsch mit einem modernen, cleanen Look ("Vibe").
+
+Kern-Features, die implementiert werden müssen:
+
+Deutsches Scrabble-Regelwerk: Das Spielfeld ist 15x15 Felder groß. Die deutschen Buchstabenwerte und deren Häufigkeit müssen exakt hinterlegt sein (z. B. E = 1 Punkt, Ä = 6 Punkte, Q = 10 Punkte).
+
+Automatische Punkte-Auswertung: Wenn ein Spieler ein Wort legt, muss das System die Punkte automatisch berechnen. Dabei müssen die Bonusfelder (Doppelter/Dreifacher Wortwert, Doppelter/Dreifacher Buchstabenwert) korrekt mit einbezogen werden. Auch Kreuzungspunkte mit bestehenden Wörtern müssen automatisch ausgewertet werden. (wortwertanzeige)
+
+Multiplayer-Architektur: Das Spiel muss von mehreren Spielern (2–4 Spieler) rundenbasiert gespielt werden können. Der Zustand des Spielfelds und die Punkteübersicht müssen für alle synchron sein.
+Man kann einen Mitspieler per Link (wird zum Beispiel mit WhatsApp) einladen.
+
+UI/UX ("Vibe"): Das Design soll nicht altbacken wirken, sondern modern, minimalistisch und "smooth" (z. B. durch sanfte Drag-and-Drop-Animationen der Spielsteine). Handy, Portrait anzeige
+
+Gewünschter erster Schritt:
+Erstelle mir zuerst die grundlegende Datenstruktur für das 15x15-Spielfeld (inklusive der Positionen für die Bonusfelder) sowie die Logik für die automatische Punkteberechnung eines gelegten Wortes in [DEINE PROGRAMMIERSPRACHE EINSETZEN]. (html, js, css…)
+
+es wird verwendet: https://dashboard.render.com/ 
+
+Ein paar Tipps für den Start:
+Die Punkte-Logik ist der kniffligste Teil. Ein Feld muss wissen, ob sein Bonus (z. B. "3x Wort") in dieser Runde neu aktiviert wurde oder schon in einer vorherigen Runde verbraucht wurde.
+
+das spiel soll eine Lobby haben (Name, Link versenden,)
+Optionen: (Spielregeln, Kamerszoom, Audio)
+Buttons für: Eine runde aussetzen, Steine tauschen, Partie aufgeben, wenn ich ein wort gelegt habe, "Senden" drücken
+
+Button: # Steine sind noch im Spielsteinbeutel, Zugverlauf anzeige.
+
+ich kann Meine steine in meiner liste unten beliebig umsortieren.
+
+Wort-Validierung: Senden von Wörtern („HUND“, „SPIEL“) sowie erfundenen Wörtern, um die manuelle Ablehnungslogik zu prüfen. Wörter werden nur nach expliziter Aufforderung (Rechtsklick auf das Wort) überprüft.
