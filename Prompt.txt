@@ -1,3 +1,6 @@
+https://scrabble-pro.onrender.com
+
+
 Rolle: Du bist ein erfahrener Full-Stack-Softwareentwickler und Game-Designer.
 
 Projektziel: Erstelle die Architektur und den Code für ein webbasiertes Multiplayer-Scrabble-Spiel auf Deutsch mit einem modernen, cleanen Look ("Vibe").
@@ -30,3 +33,5 @@ Button: # Steine sind noch im Spielsteinbeutel, Zugverlauf anzeige.
 ich kann Meine steine in meiner liste unten beliebig umsortieren.
 
 Wort-Validierung: Senden von Wörtern („HUND“, „SPIEL“) sowie erfundenen Wörtern, um die manuelle Ablehnungslogik zu prüfen. Wörter werden nur nach expliziter Aufforderung (Rechtsklick auf das Wort) überprüft.
+Wenn das Wort doch gültig ist, verlierst du 10 Punkte 🙂
+

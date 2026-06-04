@@ -83,7 +83,7 @@ const els = {
   wordDefinitionDisplay: document.getElementById('word-definition-display'),
   challengePanel: document.getElementById('challenge-panel'),
   btnTriggerChallenge: document.getElementById('btn-trigger-challenge'),
-  linkDudenLookup: document.getElementById('link-duden-lookup'),
+  linkDwdsLookup: document.getElementById('link-dwds-lookup'),
 
   modalAlert: document.getElementById('modal-alert'),
   alertTitleDisplay: document.getElementById('alert-title-display'),
@@ -552,7 +552,7 @@ function setupWebSocketListeners() {
       els.wordValidationBadge.className = 'validation-status-badge invalid';
     }
 
-    els.linkDudenLookup.href = `https://www.duden.de/rechtschreibung/${encodeURIComponent(word)}`;
+    els.linkDwdsLookup.href = `https://www.dwds.de/wb/${encodeURIComponent(word)}`;
 
     // Show challenge box only if challengeable
     const lastHistory = gameHistory.length > 0 ? gameHistory[gameHistory.length - 1] : null;
@@ -766,7 +766,7 @@ function renderHistory(history) {
         }
         wordBadge.textContent = word;
         
-        // Click to view Duden/Challenge word
+        // Click to view DWDS/Challenge word
         wordBadge.addEventListener('click', () => {
           triggerWordLookup(word);
         });
@@ -1152,7 +1152,7 @@ async function fetchWordDefinition(word) {
         }
       }
     }
-    return `Keine Definition für "${titleCase}" im Online-Wörterbuch verfügbar. Verwende den Link unten, um direkt im Duden zu suchen.`;
+    return `Keine Definition für "${titleCase}" im Online-Wörterbuch verfügbar. Verwende den Link unten, um direkt im DWDS zu suchen.`;
   } catch (err) {
     console.error('Wiktionary Parse Error:', err);
     return 'Fehler beim Laden der Definition. Bitte überprüfe deine Internetverbindung.';
