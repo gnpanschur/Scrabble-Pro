@@ -12,6 +12,7 @@ let localPlacedTiles = []; // [{ r, c, letter, isBlank }]
 let isMyTurn = false;
 let myPlayerId = '';
 let canChallenge = false;
+let localGameStarted = false;
 
 // Audio Settings
 let audioCtx = null;
@@ -460,6 +461,14 @@ function resizeBoardToFit() {
   }
 }
 
+function centerBoard() {
+  const container = document.querySelector('.board-viewport-container');
+  if (container) {
+    container.scrollLeft = Math.max(0, (container.scrollWidth - container.clientWidth) / 2);
+    container.scrollTop = Math.max(0, (container.scrollHeight - container.clientHeight) / 2);
+  }
+}
+
 // -------------------------------------------------------------
 // WEBSOCKET LISTENERS
 // -------------------------------------------------------------
@@ -489,8 +498,18 @@ function setupWebSocketListeners() {
     currentRoomId = state.roomId;
     
     if (state.gameStarted) {
+      const isJustStarting = !localGameStarted;
+      localGameStarted = true;
       transitionToScreen('game-screen');
-      setTimeout(resizeBoardToFit, 50);
+      
+      if (isJustStarting) {
+        autoFitBoard = false;
+        els.zoomSlider.value = 107;
+        updateZoomScale(107);
+        setTimeout(centerBoard, 100);
+      } else if (autoFitBoard) {
+        setTimeout(resizeBoardToFit, 50);
+      }
       
       // Update data
       gameBoard = state.board;
@@ -524,6 +543,7 @@ function setupWebSocketListeners() {
       els.bagCountDisplay.textContent = state.bagCount;
       els.gameRoomCode.textContent = state.roomId;
     } else {
+      localGameStarted = false;
       transitionToScreen('waiting-screen');
       lobbyPlayers = state.players;
       updateLobbyUI();
