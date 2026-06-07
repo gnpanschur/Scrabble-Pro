@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -9,10 +10,13 @@
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap"
+    rel="stylesheet">
   <!-- CSS Stylesheet -->
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
   <!-- Background Glow Accents -->
@@ -21,11 +25,12 @@
 
   <!-- MAIN APP WRAPPER -->
   <main class="app-container">
-    
+
     <!-- LOBBY SCREEN (Lobby erstellen / beitreten) -->
     <section id="lobby-screen" class="card active">
       <header class="lobby-header" style="position: relative;">
-        <button class="btn-icon-circle fullscreen-toggle" title="Vollbild" style="position: absolute; top: 0; right: 0;">⛶</button>
+        <button class="btn-icon-circle fullscreen-toggle" title="Vollbild"
+          style="position: absolute; top: 0; right: 0;">⛶</button>
         <h1 class="logo-text">Scrabble <span class="accent-text">Pro</span></h1>
         <p class="subtitle-text">Das deutsche Wortduell</p>
       </header>
@@ -37,17 +42,15 @@
         </div>
 
         <div class="actions-stack">
-          <button id="btn-create-lobby" class="btn btn-primary">Lobby erstellen</button>
-          
-          <div class="divider">
-            <span>ODER BEITRETEN</span>
-          </div>
+          <button id="btn-join-lobby" class="btn btn-secondary">Spiel beitreten</button>
+
+          <button id="btn-create-lobby" class="btn btn-primary">Spiel erstellen</button>
 
           <div class="input-group">
             <label for="room-code-input">Lobby-Code (4-stellig)</label>
-            <input type="text" id="room-code-input" placeholder="Z.B. ABCD" maxlength="4" style="text-transform: uppercase;">
+            <input type="text" id="room-code-input" placeholder="Z.B. ABCD" maxlength="4"
+              style="text-transform: uppercase;">
           </div>
-          <button id="btn-join-lobby" class="btn btn-secondary">Lobby beitreten</button>
         </div>
       </div>
     </section>
@@ -55,7 +58,8 @@
     <!-- WAITING ROOM SCREEN -->
     <section id="waiting-screen" class="card">
       <header class="lobby-header" style="position: relative;">
-        <button class="btn-icon-circle fullscreen-toggle" title="Vollbild" style="position: absolute; top: 0; right: 0;">⛶</button>
+        <button class="btn-icon-circle fullscreen-toggle" title="Vollbild"
+          style="position: absolute; top: 0; right: 0;">⛶</button>
         <h1 class="logo-text">Lobby <span class="room-code-badge" id="lobby-code-display">----</span></h1>
         <p class="subtitle-text">Warte auf Mitspieler...</p>
       </header>
@@ -93,7 +97,8 @@
       <!-- Top Navigation & Scoreboard -->
       <header class="game-header">
         <div class="game-meta-row">
-          <div class="logo-sub">Scrabble <span class="accent-text">Pro</span> (<span id="game-room-code">----</span>)</div>
+          <div class="logo-sub">Scrabble <span class="accent-text">Pro</span> (<span id="game-room-code">----</span>)
+          </div>
           <div class="header-buttons">
             <button class="btn-icon-circle fullscreen-toggle" title="Vollbild">⛶</button>
             <button id="btn-open-options" class="btn-icon-circle" title="Optionen">⚙️</button>
@@ -167,7 +172,7 @@
             <span class="bag-count-indicator">🎒 Beutel: <strong id="bag-count-display">--</strong> Steine übrig</span>
             <button id="btn-toggle-history" class="btn-text">📜 Verlauf anzeigen</button>
           </div>
-          
+
           <div class="drawer-content collapsed" id="history-content">
             <div class="turn-history-list" id="turn-history-list">
               <!-- Chronological play logs -->
@@ -180,7 +185,7 @@
   </main>
 
   <!-- MODALS SYSTEM -->
-  
+
   <!-- 1. Options Modal -->
   <div class="modal-overlay" id="modal-options">
     <div class="modal-card">
@@ -205,9 +210,12 @@
             <li>Der erste Spielzug muss das Center-Feld (Mitte mit Stern) abdecken.</li>
             <li>Wörter müssen waagerecht oder senkrecht gelegt werden und durchgehend sein.</li>
             <li>Jeder Zug muss an ein bestehendes Wort anknüpfen.</li>
-            <li><strong>Premiumfelder:</strong> Doppelte/Dreifache Buchstaben- (DL/TL) bzw. Wortwerte (DW/TW) gelten nur für neu gelegte Steine in dieser Runde.</li>
+            <li><strong>Premiumfelder:</strong> Doppelte/Dreifache Buchstaben- (DL/TL) bzw. Wortwerte (DW/TW) gelten nur
+              für neu gelegte Steine in dieser Runde.</li>
             <li><strong>Bingo:</strong> Wer alle 7 Steine in einem Zug legt, erhält 50 Punkte extra!</li>
-            <li><strong>Rechtsklick / Gedrückthalten:</strong> Du kannst Wörter im Verlauf oder auf dem Brett anklicken, um die Bedeutung zu sehen oder sie als ungültig <strong>herauszufordern</strong>! Wenn das Wort doch gültig ist, verlierst du 10 Punkte 🙂</li>
+            <li><strong>Rechtsklick / Gedrückthalten:</strong> Du kannst Wörter im Verlauf oder auf dem Brett anklicken,
+              um die Bedeutung zu sehen oder sie als ungültig <strong>herauszufordern</strong>! Wenn das Wort doch
+              gültig ist, verlierst du 10 Punkte 🙂</li>
           </ul>
         </div>
       </div>
@@ -244,21 +252,24 @@
         <div class="validation-status-badge" id="word-validation-badge">
           Prüfung läuft...
         </div>
-        
+
         <div class="definition-container">
           <p id="word-definition-display" class="definition-text">Definition wird gesucht...</p>
         </div>
 
         <div class="challenge-box-panel" id="challenge-panel" style="display: none;">
           <div class="alert alert-warning">
-            ⚠️ <strong>Herausforderung möglich:</strong> Wenn du glaubst, dass dieses Wort im deutschen Scrabble ungültig ist, kannst du es herausfordern!
+            ⚠️ <strong>Herausforderung möglich:</strong> Wenn du glaubst, dass dieses Wort im deutschen Scrabble
+            ungültig ist, kannst du es herausfordern!
           </div>
-          <p class="helper-text-sm">Bei Erfolg wird der gesamte Zug zurückgesetzt. Bei Misserfolg verlierst du 10 Punkte.</p>
+          <p class="helper-text-sm">Bei Erfolg wird der gesamte Zug zurückgesetzt. Bei Misserfolg verlierst du 10
+            Punkte.</p>
           <button id="btn-trigger-challenge" class="btn btn-danger w-full">Zug herausfordern!</button>
         </div>
 
         <div class="modal-actions-stacked">
-          <a id="link-dwds-lookup" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary text-center">Im DWDS nachschlagen ↗</a>
+          <a id="link-dwds-lookup" href="#" target="_blank" rel="noopener noreferrer"
+            class="btn btn-secondary text-center">Im DWDS nachschlagen ↗</a>
         </div>
       </div>
     </div>
@@ -286,4 +297,5 @@
   <script src="scrabble-engine.js"></script>
   <script src="app.js"></script>
 </body>
+
 </html>

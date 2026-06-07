@@ -318,6 +318,7 @@ body {
 .actions-stack {
   display: flex;
   flex-direction: column;
+  gap: 12px;
 }
 
 /* Waiting Room Styles */
