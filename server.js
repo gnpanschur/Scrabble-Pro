@@ -103,20 +103,47 @@ async function checkWordInWiktionary(word) {
     const lowercase = cleanWord.toLowerCase();
 
     const urls = [
-      `https://de.wiktionary.org/w/api.php?action=query&format=json&origin=*&titles=${encodeURIComponent(titleCase)}`,
-      `https://de.wiktionary.org/w/api.php?action=query&format=json&origin=*&titles=${encodeURIComponent(lowercase)}`
+      `https://de.wiktionary.org/w/api.php?action=query&format=json&prop=revisions&rvprop=content&rvslots=main&origin=*&titles=${encodeURIComponent(titleCase)}`,
+      `https://de.wiktionary.org/w/api.php?action=query&format=json&prop=revisions&rvprop=content&rvslots=main&origin=*&titles=${encodeURIComponent(lowercase)}`
     ];
 
+    const headers = {
+      'User-Agent': 'ScrabblePro/1.0 (https://github.com/gnpanschur/Scrabble-Pro; contact@example.com)'
+    };
+
     const responses = await Promise.all(
-      urls.map(url => fetch(url).then(res => res.json()).catch(() => null))
+      urls.map(url =>
+        fetch(url, { headers })
+          .then(res => {
+            if (!res.ok) return null;
+            return res.json();
+          })
+          .catch(() => null)
+      )
     );
+
+    let allFailed = true;
+    for (const data of responses) {
+      if (data !== null && data !== undefined) {
+        allFailed = false;
+      }
+    }
+
+    if (allFailed) {
+      console.warn('Wiktionary API requests failed (network error, rate-limited, or blocked). Falling back to assuming word is valid.');
+      return true; // Fallback to true so the game doesn't break
+    }
 
     for (const data of responses) {
       if (data && data.query && data.query.pages) {
         const pages = data.query.pages;
         for (const pageId in pages) {
-          if (pageId !== '-1' && !pages[pageId].missing) {
-            return true; // Word exists
+          const page = pages[pageId];
+          if (pageId !== '-1' && !page.missing && page.revisions && page.revisions[0]) {
+            const content = page.revisions[0]['*'] || page.revisions[0].slots?.main?.['*'] || '';
+            if (/\{\{\s*Sprache\s*\|\s*Deutsch\s*\}\}/i.test(content)) {
+              return true; // Word exists and is a German entry!
+            }
           }
         }
       }
