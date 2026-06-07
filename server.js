@@ -92,9 +92,89 @@ function broadcastRoomState(room) {
 }
 
 /**
- * Validates a word using Wiktionary API (checks title case and lowercase)
+ * Transcribes special German characters into URL-safe formats used by Duden.de
+ */
+function transcribeForDuden(word) {
+  return word
+    .replace(/ä/g, 'ae')
+    .replace(/ö/g, 'oe')
+    .replace(/ü/g, 'ue')
+    .replace(/Ä/g, 'Ae')
+    .replace(/Ö/g, 'Oe')
+    .replace(/Ü/g, 'Ue')
+    .replace(/ß/g, 'sz')
+    .replace(/ẞ/g, 'sz');
+}
+
+/**
+ * Generates the TitleCase and lowercase URL candidates for a word on Duden.de
+ */
+function getDudenUrls(word) {
+  const cleanWord = word.trim().toUpperCase();
+  if (cleanWord.length < 2) return [];
+
+  const titleCase = cleanWord.charAt(0) + cleanWord.slice(1).toLowerCase();
+  const lowercase = cleanWord.toLowerCase();
+  
+  const tcTranscribed = transcribeForDuden(titleCase);
+  const lcTranscribed = transcribeForDuden(lowercase);
+  
+  const uniquePaths = Array.from(new Set([tcTranscribed, lcTranscribed]));
+  return uniquePaths.map(path => `https://www.duden.de/rechtschreibung/${encodeURIComponent(path)}`);
+}
+
+/**
+ * Checks a word on Duden.de first. If Duden is blocked or fails, falls back to Wiktionary.
  */
 async function checkWordInWiktionary(word) {
+  try {
+    const dudenUrls = getDudenUrls(word);
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    };
+
+    let dudenFound = false;
+    let dudenBlockedOrFailed = false;
+
+    // Check Duden first via fast HEAD requests
+    for (const url of dudenUrls) {
+      try {
+        const res = await fetch(url, { headers, method: 'HEAD' });
+        if (res.status === 200) {
+          dudenFound = true;
+          break;
+        } else if (res.status !== 404) {
+          // 403, 429, 503, etc. indicates rate-limiting or blocks
+          dudenBlockedOrFailed = true;
+        }
+      } catch (err) {
+        console.error('Duden HEAD request failed:', err);
+        dudenBlockedOrFailed = true;
+      }
+    }
+
+    if (dudenFound) {
+      return true; // Valid in Duden
+    }
+
+    // If Duden successfully returned 404 for all paths without blocking, it's invalid
+    if (!dudenBlockedOrFailed && dudenUrls.length > 0) {
+      return false; // Confirmed invalid in Duden
+    }
+
+    // Otherwise, Duden request was blocked or failed, so we fall back to Wiktionary
+    console.warn(`Duden check failed or was blocked for "${word}". Falling back to Wiktionary...`);
+    return await checkWordInWiktionaryInternal(word);
+  } catch (err) {
+    console.error(`Error in Duden validation for "${word}", falling back to Wiktionary:`, err);
+    return await checkWordInWiktionaryInternal(word);
+  }
+}
+
+/**
+ * Fallback validator using the German Wiktionary API (verifies exact Level-2 German header)
+ */
+async function checkWordInWiktionaryInternal(word) {
   try {
     const cleanWord = word.trim().toUpperCase();
     if (cleanWord.length < 2) return false;
