@@ -208,6 +208,7 @@ body {
   border-radius: 10px;
   border: none;
   font-size: 0.95rem;
+  padding: 10px;
 }
 .btn-submit-game:hover {
   transform: scale(1.02);
@@ -1186,4 +1187,11 @@ input:checked + .slider-toggle:before {
 
 .btn-chat-submit:hover {
   background: #059669;
+}
+
+@media (max-width: 400px) {
+  .btn-control, .btn-submit-game {
+    font-size: 0.75rem;
+    padding: 10px 4px;
+  }
 }
