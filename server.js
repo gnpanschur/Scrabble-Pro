@@ -141,7 +141,9 @@ async function checkWordInWiktionary(word) {
           const page = pages[pageId];
           if (pageId !== '-1' && !page.missing && page.revisions && page.revisions[0]) {
             const content = page.revisions[0]['*'] || page.revisions[0].slots?.main?.['*'] || '';
-            if (/\{\{\s*Sprache\s*\|\s*Deutsch\s*\}\}/i.test(content)) {
+            const escapedTitle = page.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const headerRegex = new RegExp(`==\\s*${escapedTitle}\\s*\\(\\s*\\{\\{\\s*Sprache\\s*\\|\\s*Deutsch\\s*\\}\\}\\s*\\)\\s*==`, 'i');
+            if (headerRegex.test(content)) {
               return true; // Word exists and is a German entry!
             }
           }
