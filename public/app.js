@@ -584,10 +584,14 @@ function setupWebSocketListeners() {
       els.challengePanel.style.display = 'none';
     }
 
-    // Fetch definition client-side from Wiktionary for modern premium experience
-    els.wordDefinitionDisplay.textContent = 'Lade Erklärung...';
-    const definition = await fetchWordDefinition(word);
-    els.wordDefinitionDisplay.textContent = definition;
+    if (isValid) {
+      // Fetch definition client-side from Wiktionary for modern premium experience
+      els.wordDefinitionDisplay.textContent = 'Lade Erklärung...';
+      const definition = await fetchWordDefinition(word);
+      els.wordDefinitionDisplay.textContent = definition;
+    } else {
+      els.wordDefinitionDisplay.textContent = 'Dieses Wort ist ungültig (nicht im Wörterbuch gefunden oder keine deutsche Bedeutung vorhanden).';
+    }
   });
 
   // Chat Message handler
