@@ -1,6 +1,13 @@
 // Initialize Socket.IO connection
 const socket = io();
 
+// Persistent player session ID
+let myPersistentId = localStorage.getItem('scrabble_persistent_id');
+if (!myPersistentId) {
+  myPersistentId = 'p_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+  localStorage.setItem('scrabble_persistent_id', myPersistentId);
+}
+
 // Local UI & Game States
 let currentRoomId = '';
 let lobbyPlayers = [];
@@ -93,6 +100,14 @@ const els = {
   btnAlertCancel: document.getElementById('btn-alert-cancel'),
   btnAlertClose: document.getElementById('btn-alert-close'),
 
+  modalConnLost: document.getElementById('modal-conn-lost'),
+  btnConnLostLobby: document.getElementById('btn-conn-lost-lobby'),
+  
+  modalCoplayerDisconnected: document.getElementById('modal-coplayer-disconnected'),
+  coplayerDisconnectMsg: document.getElementById('coplayer-disconnect-msg'),
+  btnCoplayerWait: document.getElementById('btn-coplayer-wait'),
+  btnCoplayerLeave: document.getElementById('btn-coplayer-leave'),
+
   chatMessages: document.getElementById('chat-messages'),
   chatInput: document.getElementById('chat-input'),
   btnSendChat: document.getElementById('btn-send-chat')
@@ -108,6 +123,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const inviteCode = urlParams.get('code');
   if (inviteCode) {
     els.roomCodeInput.value = inviteCode.toUpperCase();
+  }
+
+  // Restore player name if previously entered
+  const savedName = localStorage.getItem('scrabble_player_name');
+  if (savedName) {
+    els.playerNameInput.value = savedName;
   }
 
   setupUIEventListeners();
@@ -144,8 +165,9 @@ function setupUIEventListeners() {
       await showCustomAlert('Bitte gib einen Namen ein.');
       return;
     }
+    localStorage.setItem('scrabble_player_name', name);
     initAudio();
-    socket.emit('createLobby', { name });
+    socket.emit('createLobby', { name, playerId: myPersistentId });
   });
 
   // Lobby joining
@@ -160,8 +182,9 @@ function setupUIEventListeners() {
       await showCustomAlert('Bitte gib einen gültigen 4-stelligen Lobby-Code ein.');
       return;
     }
+    localStorage.setItem('scrabble_player_name', name);
     initAudio();
-    socket.emit('joinLobby', { name, roomId: code });
+    socket.emit('joinLobby', { name, roomId: code, playerId: myPersistentId });
   });
 
   // Copy invitation link to clipboard
@@ -278,6 +301,24 @@ function setupUIEventListeners() {
   els.chatInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       sendChatMessage();
+    }
+  });
+
+  // Connection lost dialog buttons
+  els.btnConnLostLobby.addEventListener('click', () => {
+    localStorage.removeItem('scrabble_room_id');
+    location.reload();
+  });
+
+  els.btnCoplayerWait.addEventListener('click', () => {
+    els.modalCoplayerDisconnected.classList.remove('active');
+  });
+
+  els.btnCoplayerLeave.addEventListener('click', async () => {
+    if (await showCustomConfirm('Möchtest du dieses Spiel wirklich verlassen und zur Lobby zurückkehren?')) {
+      localStorage.removeItem('scrabble_room_id');
+      socket.emit('resignGame');
+      location.reload();
     }
   });
 }
@@ -477,6 +518,7 @@ function setupWebSocketListeners() {
   // Lobby Created
   socket.on('lobbyCreated', ({ roomId }) => {
     currentRoomId = roomId;
+    localStorage.setItem('scrabble_room_id', roomId);
     transitionToScreen('waiting-screen');
     updateLobbyUI();
   });
@@ -496,11 +538,27 @@ function setupWebSocketListeners() {
   socket.on('gameState', (state) => {
     myPlayerId = socket.id;
     currentRoomId = state.roomId;
+    localStorage.setItem('scrabble_room_id', state.roomId);
     
     if (state.gameStarted) {
       const isJustStarting = !localGameStarted;
       localGameStarted = true;
       transitionToScreen('game-screen');
+
+      // Check if any other player is disconnected
+      const disconnectedPlayers = state.players.filter(p => p.id !== myPlayerId && p.connected === false);
+      if (disconnectedPlayers.length > 0) {
+        const names = disconnectedPlayers.map(p => p.name).join(', ');
+        els.coplayerDisconnectMsg.textContent = `${names} hat/haben die Verbindung verloren. Das Spiel ist pausiert, bis die Verbindung wiederhergestellt ist.`;
+        els.modalCoplayerDisconnected.classList.add('active');
+      } else {
+        els.modalCoplayerDisconnected.classList.remove('active');
+      }
+
+      // If winner is declared, clear stored room ID
+      if (state.winner) {
+        localStorage.removeItem('scrabble_room_id');
+      }
       
       if (isJustStarting) {
         autoFitBoard = false;
@@ -598,6 +656,35 @@ function setupWebSocketListeners() {
   socket.on('chatMessage', ({ sender, message }) => {
     appendChatMessage(sender, message);
   });
+
+  // Connection / Reconnection Handlers
+  socket.on('connect', () => {
+    handleSocketConnect();
+  });
+
+  socket.on('disconnect', (reason) => {
+    console.log('Socket disconnected:', reason);
+    if (currentRoomId) {
+      showConnectionLostModal();
+    }
+  });
+
+  socket.on('reconnectSuccess', ({ roomId }) => {
+    console.log('Successfully reconnected to room:', roomId);
+    hideConnectionLostModal();
+  });
+
+  socket.on('reconnectFailed', (msg) => {
+    console.warn('Reconnection failed:', msg);
+    localStorage.removeItem('scrabble_room_id');
+    currentRoomId = '';
+    transitionToScreen('lobby-screen');
+  });
+
+  // Check connection status immediately upon listener setup
+  if (socket.connected) {
+    handleSocketConnect();
+  }
 }
 
 function transitionToScreen(screenId) {
@@ -1315,3 +1402,27 @@ document.addEventListener('click', () => {
     requestWakeLock();
   }
 }, { once: true });
+
+// Connection Modals Helper Functions
+function showConnectionLostModal() {
+  if (els.modalConnLost) {
+    els.modalConnLost.classList.add('active');
+  }
+}
+
+function hideConnectionLostModal() {
+  if (els.modalConnLost) {
+    els.modalConnLost.classList.remove('active');
+  }
+}
+
+function handleSocketConnect() {
+  console.log('Socket connected:', socket.id);
+  hideConnectionLostModal();
+  
+  const savedRoomId = localStorage.getItem('scrabble_room_id');
+  if (savedRoomId && myPersistentId) {
+    console.log(`Attempting reconnection to room ${savedRoomId} for player ID ${myPersistentId}...`);
+    socket.emit('reconnectPlayer', { roomId: savedRoomId, playerId: myPersistentId });
+  }
+}

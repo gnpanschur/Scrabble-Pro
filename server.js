@@ -75,7 +75,8 @@ function getPlayerState(room, socketId) {
       name: p.name,
       score: p.score,
       rackCount: p.rack.length,
-      isActive: room.gameStarted && room.players[room.turnIndex]?.id === p.id
+      isActive: room.gameStarted && room.players[room.turnIndex]?.id === p.id,
+      connected: p.connected !== false
     })),
     myRack: room.players.find(p => p.id === socketId)?.rack || [],
     canChallenge: room.gameStarted && room.history.length > 0 && !room.history[room.history.length - 1].challenged && !room.history[room.history.length - 1].system
@@ -251,12 +252,12 @@ io.on('connection', (socket) => {
   console.log(`Socket connected: ${socket.id}`);
 
   // Create Lobby
-  socket.on('createLobby', ({ name }) => {
+  socket.on('createLobby', ({ name, playerId }) => {
     const roomId = generateRoomId();
     const room = {
       roomId,
       gameStarted: false,
-      players: [{ id: socket.id, name: name || 'Spieler 1', score: 0, rack: [] }],
+      players: [{ id: socket.id, persistentId: playerId, name: name || 'Spieler 1', score: 0, rack: [], connected: true }],
       board: Array(15).fill(null).map(() => Array(15).fill(null)),
       bag: createShuffledBag(),
       turnIndex: 0,
@@ -273,7 +274,7 @@ io.on('connection', (socket) => {
   });
 
   // Join Lobby
-  socket.on('joinLobby', ({ name, roomId }) => {
+  socket.on('joinLobby', ({ name, roomId, playerId }) => {
     const cleanRoomId = roomId.trim().toUpperCase();
     const room = rooms.get(cleanRoomId);
 
@@ -291,7 +292,7 @@ io.on('connection', (socket) => {
     }
 
     const playerName = name || `Spieler ${room.players.length + 1}`;
-    room.players.push({ id: socket.id, name: playerName, score: 0, rack: [] });
+    room.players.push({ id: socket.id, persistentId: playerId, name: playerName, score: 0, rack: [], connected: true });
     socket.join(cleanRoomId);
 
     console.log(`${playerName} joined lobby ${cleanRoomId}`);
@@ -652,6 +653,7 @@ io.on('connection', (socket) => {
         } else {
           // Keep player in list so they can reconnect if needed, or if they left permanently:
           // For simplicity, we can let them disconnect but notify other players.
+          player.connected = false;
           room.history.push({
             id: Date.now().toString(),
             system: true,
@@ -661,6 +663,41 @@ io.on('connection', (socket) => {
         }
       }
     }
+  });
+
+  // Handle Player Reconnection
+  socket.on('reconnectPlayer', ({ roomId, playerId }) => {
+    if (!roomId || !playerId) {
+      socket.emit('reconnectFailed', 'Ungültige Anmeldedaten.');
+      return;
+    }
+    const cleanRoomId = roomId.trim().toUpperCase();
+    const room = rooms.get(cleanRoomId);
+    if (room) {
+      const player = room.players.find(p => p.persistentId === playerId || p.id === playerId);
+      if (player) {
+        // Update the player's socket connection ID
+        player.id = socket.id;
+        player.connected = true;
+        socket.join(cleanRoomId);
+        
+        console.log(`${player.name} reconnected to room ${cleanRoomId} with new socket ${socket.id}`);
+        
+        // Push reconnect message in history if game is started
+        if (room.gameStarted) {
+          room.history.push({
+            id: Date.now().toString(),
+            system: true,
+            text: `${player.name} hat sich wieder verbunden.`
+          });
+        }
+        
+        socket.emit('reconnectSuccess', { roomId: cleanRoomId });
+        broadcastRoomState(room);
+        return;
+      }
+    }
+    socket.emit('reconnectFailed', 'Lobby nicht gefunden oder Spieler nicht in dieser Lobby.');
   });
 });
 

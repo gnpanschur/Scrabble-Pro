@@ -292,6 +292,43 @@
     </div>
   </div>
 
+  <!-- 5. Local Connection Lost Modal -->
+  <div class="modal-overlay" id="modal-conn-lost" style="z-index: 200;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Verbindung unterbrochen</h2>
+      </div>
+      <div class="modal-body text-center">
+        <div class="connection-status-icon pulsing-orange">⚡</div>
+        <p class="connection-message">Die Verbindung zum Server wurde getrennt. Bitte warte, während wir versuchen, die Verbindung wiederherzustellen...</p>
+        <div class="spinner-container">
+          <div class="spinner"></div>
+        </div>
+        <button id="btn-conn-lost-lobby" class="btn btn-secondary w-full" style="margin-top: 15px;">Zurück zur Lobby</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Co-Player Disconnected Modal -->
+  <div class="modal-overlay" id="modal-coplayer-disconnected" style="z-index: 150;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="coplayer-disconnect-title">Mitspieler offline</h2>
+      </div>
+      <div class="modal-body text-center">
+        <div class="connection-status-icon pulsing-red">⚠️</div>
+        <p id="coplayer-disconnect-msg" class="connection-message">Ein Mitspieler hat die Verbindung verloren. Warten auf Wiederverbindung...</p>
+        <div class="spinner-container">
+          <div class="spinner"></div>
+        </div>
+        <div style="margin-top: 20px; display: flex; gap: 8px;">
+          <button id="btn-coplayer-wait" class="btn btn-primary w-full">Warten</button>
+          <button id="btn-coplayer-leave" class="btn btn-danger-sm w-full">Spiel beenden</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Socket.IO and Game Logic Scripts -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="scrabble-engine.js"></script>
