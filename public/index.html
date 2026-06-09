@@ -329,10 +329,27 @@
     </div>
   </div>
 
-  <!-- Socket.IO and Game Logic Scripts -->
-  <script src="/socket.io/socket.io.js"></script>
+  <!-- Socket.IO from CDN (required for Capacitor since it doesn't host the backend) -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="scrabble-engine.js"></script>
   <script src="app.js"></script>
+
+  <!-- Capacitor Hardware Back-Button Handler -->
+  <script type="module">
+    import { App } from 'https://unpkg.com/@capacitor/app@latest/dist/esm/index.js';
+
+    App.addListener('backButton', ({ canGoBack }) => {
+      const isLobbyVisible = document.getElementById('lobby-screen').classList.contains('active');
+      
+      if (isLobbyVisible) {
+        if (confirm('Möchtest du Scrabble Pro beenden?')) {
+          App.exitApp();
+        }
+      } else {
+        console.log('Zurück-Taste im Spiel blockiert.');
+      }
+    });
+  </script>
 </body>
 
 </html>

@@ -1,0 +1,8 @@
+{
+  "appId": "com.gnpanschur.scrabblepro",
+  "appName": "Scrabble Pro",
+  "webDir": "public",
+  "server": {
+    "cleartext": true
+  }
+}

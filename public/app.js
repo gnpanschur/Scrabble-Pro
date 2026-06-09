@@ -1,5 +1,6 @@
 // Initialize Socket.IO connection
-const socket = io();
+const BACKEND_URL = 'https://scrabble-pro.onrender.com'; // Production Backend URL auf Render
+const socket = io(BACKEND_URL);
 
 // Persistent player session ID
 let myPersistentId = localStorage.getItem('scrabble_persistent_id');
