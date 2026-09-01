@@ -570,6 +570,7 @@ body {
   transform: scale(1.05);
   box-shadow: -4px -4px 10px rgba(99, 102, 241, 0.6);
   z-index: 2;
+  transition: none !important;
 }
 
 /* Cell Multipliers */
@@ -729,6 +730,7 @@ body {
   background-color: rgba(99, 102, 241, 0.2);
   border-color: var(--accent-color);
   box-shadow: -3px -3px 8px rgba(99, 102, 241, 0.5);
+  transition: none !important;
 }
 
 .tile-rack .scrabble-tile {
