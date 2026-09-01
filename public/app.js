@@ -1021,8 +1021,8 @@ function setupDragAndDrop() {
 // dirY: -1 = nach oben, 1 = nach unten
 // touchOnly: false = Versatz gilt AUCH bei Maus/PC; true = NUR auf Touchscreens
 const TOUCH_DRAG_CONFIG = {
-  pixelsX: -20,    // Anzahl Pixel X-Richtung
-  pixelsY: -35,    // Anzahl Pixel Y-Richtung
+  pixelsX: 20,     // Anzahl Pixel X-Richtung
+  pixelsY: 35,     // Anzahl Pixel Y-Richtung
   dirX: -1,        // Richtung X: -1 (links), 1 (rechts)
   dirY: -1,        // Richtung Y: -1 (oben), 1 (unten)
   touchOnly: false // false = auch bei Maus/PC sichtbar!
