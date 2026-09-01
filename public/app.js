@@ -24,6 +24,9 @@ let isMyTurn = false;
 let myPlayerId = "";
 let canChallenge = false;
 let localGameStarted = false;
+let lastMoveId = null;
+let recentlyPlacedCoords = [];
+let recentlyPlacedTimer = null;
 
 // Audio Settings
 let audioCtx = null;
@@ -636,6 +639,30 @@ function setupWebSocketListeners() {
         localPlacedTiles = [];
       }
 
+      // Highlight last played word for 3 seconds
+      const lastHistoryItem =
+        state.history && state.history.length > 0
+          ? state.history[state.history.length - 1]
+          : null;
+      if (
+        lastHistoryItem &&
+        lastHistoryItem.tilesPlaced &&
+        lastHistoryItem.tilesPlaced.length > 0
+      ) {
+        if (lastHistoryItem.id !== lastMoveId) {
+          lastMoveId = lastHistoryItem.id;
+          recentlyPlacedCoords = lastHistoryItem.tilesPlaced;
+
+          if (recentlyPlacedTimer) clearTimeout(recentlyPlacedTimer);
+          recentlyPlacedTimer = setTimeout(() => {
+            recentlyPlacedCoords = [];
+            renderBoard();
+          }, 3000);
+        }
+      } else {
+        recentlyPlacedCoords = [];
+      }
+
       renderScoreboard();
       renderBoard();
       renderRack();
@@ -842,10 +869,14 @@ function renderBoard() {
 
       if (officialTile) {
         cell.classList.add("has-tile");
+        const isRecentlyPlaced = recentlyPlacedCoords.some(
+          (t) => t.r === r && t.c === c,
+        );
         const tile = createTileElement(
           officialTile.letter,
           officialTile.isBlank,
           false,
+          isRecentlyPlaced,
         );
         cell.appendChild(tile);
       } else if (pendingTile) {
@@ -854,6 +885,7 @@ function renderBoard() {
           pendingTile.letter,
           pendingTile.isBlank,
           true,
+          false,
         );
         tile.dataset.r = r;
         tile.dataset.c = c;
@@ -874,9 +906,12 @@ function renderBoard() {
   }
 }
 
-function createTileElement(letter, isBlank, isPending) {
+function createTileElement(letter, isBlank, isPending, isRecentlyPlaced = false) {
   const tile = document.createElement("div");
-  tile.className = `scrabble-tile ${isPending ? "tile-pending" : ""}`;
+  let tileClasses = "scrabble-tile";
+  if (isPending) tileClasses += " tile-pending";
+  if (isRecentlyPlaced) tileClasses += " tile-recently-placed";
+  tile.className = tileClasses;
   tile.dataset.letter = letter;
   tile.dataset.isBlank = isBlank;
 
