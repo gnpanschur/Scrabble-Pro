@@ -191,15 +191,25 @@ body {
   border-radius: 8px;
 }
 .btn-control {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-main);
-  border: 1px solid var(--border-color);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: white;
+  font-weight: 600;
+  border: 1px solid #60a5fa;
   font-size: 0.8rem;
   padding: 10px;
   border-radius: 10px;
+  box-shadow: -3px -3px 8px rgba(37, 99, 235, 0.4);
+  transition: all 0.2s ease;
 }
-.btn-control:hover {
-  background: rgba(255, 255, 255, 0.1);
+.btn-control:hover:not(:disabled) {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  transform: translateY(-1px);
+  box-shadow: -4px -4px 12px rgba(37, 99, 235, 0.6);
+}
+.btn-control:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 .btn-submit-game {
   background: linear-gradient(135deg, var(--color-success) 0%, #047857 100%);
