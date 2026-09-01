@@ -70,6 +70,7 @@ const els = {
   previewWordText: document.getElementById("preview-word-text"),
   previewScoreText: document.getElementById("preview-score-text"),
 
+  playerArea: document.querySelector(".player-area"),
   turnBanner: document.getElementById("turn-banner"),
   tileRack: document.getElementById("tile-rack"),
   bagCountDisplay: document.getElementById("bag-count-display"),
@@ -1017,6 +1018,7 @@ function updateTurnBanner() {
   if (isMyTurn) {
     els.turnBanner.className = "turn-status-banner-mini my-turn";
     els.turnBanner.textContent = "🟢 DU bist an der Reihe! Wähle deine Steine.";
+    if (els.playerArea) els.playerArea.classList.add("my-turn");
     els.btnSubmit.disabled = false;
     els.btnPass.disabled = false;
     els.btnSwap.disabled = false;
@@ -1026,6 +1028,7 @@ function updateTurnBanner() {
     els.turnBanner.textContent = activePlayer
       ? `🔴 ${activePlayer.name} ist an der Reihe...`
       : "Warten...";
+    if (els.playerArea) els.playerArea.classList.remove("my-turn");
     els.btnSubmit.disabled = true;
     els.btnPass.disabled = true;
     els.btnSwap.disabled = true;

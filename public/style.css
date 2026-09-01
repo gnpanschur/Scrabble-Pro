@@ -685,6 +685,15 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding: 6px;
+  border-radius: 16px;
+  border: 1px solid transparent;
+  transition: all 0.3s ease;
+}
+.player-area.my-turn {
+  background: linear-gradient(135deg, rgba(5, 74, 41, 0.75) 0%, rgba(19, 117, 71, 0.75) 100%);
+  border: 1px solid #34d399;
+  box-shadow: -4px -4px 15px rgba(16, 185, 129, 0.4), 0 0 10px rgba(16, 185, 129, 0.25);
 }
 
 .turn-status-banner-mini {
