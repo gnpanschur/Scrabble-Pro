@@ -265,6 +265,7 @@ function setupUIEventListeners() {
       );
       return;
     }
+    playAudio("bell");
     socket.emit("submitTurn", { tiles: localPlacedTiles });
   });
 
@@ -428,8 +429,26 @@ function playAudio(type) {
     osc.connect(gain);
     gain.connect(audioCtx.destination);
 
-    osc.start(now);
-    osc.stop(now + 0.19);
+  } else if (type === "bell" || type === "send") {
+    // Kurzer heller Glockenklang (High Chime / Bell Sound)
+    const bellFreqs = [1760, 2637.02, 3520]; // A6 (1760Hz), E7 (2637Hz), A7 (3520Hz)
+    bellFreqs.forEach((freq, idx) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, now);
+
+      const vol = idx === 0 ? 0.22 : idx === 1 ? 0.12 : 0.05;
+      gain.gain.setValueAtTime(vol, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.45);
+    });
   }
 }
 
