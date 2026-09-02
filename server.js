@@ -447,10 +447,17 @@ io.on('connection', (socket) => {
       [game.bag[i], game.bag[j]] = [game.bag[j], game.bag[i]];
     }
 
+    const swapText = `${player.name} hat ${swappedLetters.length} Stein(e) getauscht.`;
     game.history.push({
       id: Date.now().toString(),
       system: true,
-      text: `${player.name} hat ${swappedLetters.length} Stein(e) getauscht.`
+      text: swapText
+    });
+
+    io.to(game.roomId).emit('swapNotification', {
+      text: swapText,
+      playerName: player.name,
+      count: swappedLetters.length
     });
 
     game.turnIndex = (game.turnIndex + 1) % game.players.length;

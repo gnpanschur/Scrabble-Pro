@@ -689,6 +689,23 @@ function setupWebSocketListeners() {
     appendChatMessage(sender, message);
   });
 
+  // Tile Swap Infobox Notification (3 seconds)
+  let swapToastTimer = null;
+  socket.on("swapNotification", ({ text }) => {
+    const toast = document.getElementById("swap-infobox");
+    const toastText = document.getElementById("swap-infobox-text");
+    if (!toast || !toastText) return;
+
+    toastText.textContent = text;
+    toast.style.display = "flex";
+    playAudio("click");
+
+    if (swapToastTimer) clearTimeout(swapToastTimer);
+    swapToastTimer = setTimeout(() => {
+      toast.style.display = "none";
+    }, 3000);
+  });
+
   // Connection / Reconnection Handlers
   socket.on("connect", () => {
     handleSocketConnect();
