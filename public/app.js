@@ -134,6 +134,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   setupUIEventListeners();
   setupDragAndDrop();
+  setupBoardPanController();
   setupWebSocketListeners();
 
   // Listen for window resizes to automatically fit board
@@ -976,6 +977,53 @@ function updateWordPreview() {
     if (els.previewWordText) els.previewWordText.textContent = `[Plazierung ungültig: ${prediction.error}]`;
     if (els.previewScoreText) els.previewScoreText.textContent = "0";
   }
+}
+
+// -------------------------------------------------------------
+// BOARD TOUCH/MOUSE PANNING CONTROLLER
+// -------------------------------------------------------------
+
+let isBoardPanning = false;
+let startPanX = 0;
+let startPanY = 0;
+let startScrollLeft = 0;
+let startScrollTop = 0;
+
+function setupBoardPanController() {
+  const container = document.querySelector(".board-viewport-container");
+  if (!container) return;
+
+  container.addEventListener("pointerdown", (e) => {
+    // If touching a tile, don't pan board
+    if (e.target.closest(".scrabble-tile")) return;
+
+    isBoardPanning = true;
+    startPanX = e.clientX;
+    startPanY = e.clientY;
+    startScrollLeft = container.scrollLeft;
+    startScrollTop = container.scrollTop;
+  });
+
+  document.addEventListener("pointermove", (e) => {
+    if (!isBoardPanning) return;
+    const container = document.querySelector(".board-viewport-container");
+    if (!container) return;
+
+    const dx = e.clientX - startPanX;
+    const dy = e.clientY - startPanY;
+
+    container.scrollLeft = startScrollLeft - dx;
+    container.scrollTop = startScrollTop - dy;
+  });
+
+  const stopPan = () => {
+    if (isBoardPanning) {
+      isBoardPanning = false;
+    }
+  };
+
+  document.addEventListener("pointerup", stopPan);
+  document.addEventListener("pointercancel", stopPan);
 }
 
 // -------------------------------------------------------------
