@@ -1,6 +1,5 @@
 // Initialize Socket.IO connection
-const BACKEND_URL = "https://scrabble-pro.onrender.com"; // Production Backend URL auf Render
-const socket = io(BACKEND_URL);
+const socket = (window.socketClient && window.socketClient.socket) ? window.socketClient.socket : (window.socket || io());
 
 // Persistent player session ID
 let myPersistentId = localStorage.getItem("scrabble_persistent_id");
@@ -42,31 +41,23 @@ let dragProxy = null;
 
 // DOM Elements cache
 const els = {
+  loginScreen: document.getElementById("login-screen"),
   lobbyScreen: document.getElementById("lobby-screen"),
-  waitingScreen: document.getElementById("waiting-screen"),
   gameScreen: document.getElementById("game-screen"),
 
   playerNameInput: document.getElementById("player-name-input"),
   roomCodeInput: document.getElementById("room-code-input"),
-  lobbyCodeDisplay: document.getElementById("lobby-code-display"),
-  inviteLinkDisplay: document.getElementById("invite-link-display"),
-  lobbyCountDisplay: document.getElementById("lobby-count-display"),
-  lobbyPlayerList: document.getElementById("lobby-player-list"),
+  displayRoomCode: document.getElementById("display-room-code"),
   gameRoomCode: document.getElementById("game-room-code"),
 
-  btnCreateLobby: document.getElementById("btn-create-lobby"),
-  btnJoinLobby: document.getElementById("btn-join-lobby"),
-  btnCopyLink: document.getElementById("btn-copy-link"),
-  btnWhatsappShare: document.getElementById("btn-whatsapp-share"),
   btnStartGame: document.getElementById("btn-start-game"),
-  hostOnlyMsg: document.getElementById("host-only-msg"),
   btnOpenOptions: document.getElementById("btn-open-options"),
   btnForfeit: document.getElementById("btn-forfeit"),
 
   scoreboard: document.getElementById("game-scoreboard"),
   scrabbleBoard: document.getElementById("scrabble-board"),
   zoomViewport: document.getElementById("zoom-viewport"),
-  wordValueOverlay: document.getElementById("word-value-overlay"),
+  wordPreviewContainer: document.getElementById("word-preview-container"),
   previewWordText: document.getElementById("preview-word-text"),
   previewScoreText: document.getElementById("preview-score-text"),
 
@@ -168,76 +159,17 @@ function setupUIEventListeners() {
     });
   });
 
-  // Lobby creation
-  els.btnCreateLobby.addEventListener("click", async () => {
-    const name = els.playerNameInput.value.trim();
-    if (!name) {
-      await showCustomAlert("Bitte gib einen Namen ein.");
-      return;
-    }
-    localStorage.setItem("scrabble_player_name", name);
-    initAudio();
-    socket.emit("createLobby", { name, playerId: myPersistentId });
-  });
-
-  // Lobby joining
-  els.btnJoinLobby.addEventListener("click", async () => {
-    const name = els.playerNameInput.value.trim();
-    const code = els.roomCodeInput.value.trim().toUpperCase();
-    if (!name) {
-      await showCustomAlert("Bitte gib einen Namen ein.");
-      return;
-    }
-    if (code.length !== 4) {
-      await showCustomAlert(
-        "Bitte gib einen gültigen 4-stelligen Lobby-Code ein.",
-      );
-      return;
-    }
-    localStorage.setItem("scrabble_player_name", name);
-    initAudio();
-    socket.emit("joinLobby", { name, roomId: code, playerId: myPersistentId });
-  });
-
-  // Copy invitation link to clipboard
-  els.btnCopyLink.addEventListener("click", () => {
-    const link = els.inviteLinkDisplay.textContent;
-    navigator.clipboard
-      .writeText(link)
-      .then(() => {
-        els.btnCopyLink.textContent = "✅";
-        setTimeout(() => {
-          els.btnCopyLink.textContent = "📋";
-        }, 2000);
-        playAudio("success");
-      })
-      .catch((err) => console.error("Fehler beim Kopieren:", err));
-  });
-
-  // WhatsApp share Link
-  els.btnWhatsappShare.addEventListener("click", () => {
-    const link = els.inviteLinkDisplay.textContent;
-    const text = `Komm in meine Scrabble Pro Lobby! Spiele mit mir unter: ${link}`;
-    window.open(
-      `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`,
-      "_blank",
-    );
-  });
-
-  // Host starts the game
-  els.btnStartGame.addEventListener("click", () => {
-    socket.emit("startGame");
-  });
-
   // Toggle History Drawer
-  els.btnToggleHistory.addEventListener("click", () => {
-    els.historyContent.classList.toggle("collapsed");
-    els.btnToggleHistory.textContent = els.historyContent.classList.contains(
-      "collapsed",
-    )
-      ? "📜 Verlauf anzeigen"
-      : "❌ Verlauf einklappen";
-  });
+  if (els.btnToggleHistory) {
+    els.btnToggleHistory.addEventListener("click", () => {
+      els.historyContent.classList.toggle("collapsed");
+      els.btnToggleHistory.textContent = els.historyContent.classList.contains(
+        "collapsed",
+      )
+        ? "📜 Verlauf anzeigen"
+        : "❌ Verlauf einklappen";
+    });
+  }
 
   // Submission controls
   els.btnRecall.addEventListener("click", () => {
@@ -787,49 +719,32 @@ function setupWebSocketListeners() {
 }
 
 function transitionToScreen(screenId) {
-  els.lobbyScreen.classList.remove("active");
-  els.waitingScreen.classList.remove("active");
-  els.gameScreen.classList.remove("active");
-
-  document.getElementById(screenId).classList.add("active");
-}
-
-function updateLobbyUI() {
-  els.lobbyCodeDisplay.textContent = currentRoomId;
-
-  // Set invitation share link details
-  const link = `${window.location.origin}${window.location.pathname}?code=${currentRoomId}`;
-  els.inviteLinkDisplay.textContent = link;
-
-  els.lobbyCountDisplay.textContent = lobbyPlayers.length;
-
-  els.lobbyPlayerList.innerHTML = "";
-  lobbyPlayers.forEach((player, index) => {
-    const li = document.createElement("li");
-    li.textContent = player.name;
-    if (index === 0) {
-      li.classList.add("is-host");
+  if (typeof window.showScreen === 'function') {
+    if (screenId === 'login-screen' || screenId === 'login') {
+      window.showScreen('login');
+    } else if (screenId === 'lobby-screen' || screenId === 'lobby') {
+      window.showScreen('lobby');
+    } else if (screenId === 'game-screen' || screenId === 'game') {
+      window.showScreen('game');
     }
-    els.lobbyPlayerList.appendChild(li);
-  });
-
-  // Display start button only to host
-  const isHost = lobbyPlayers.length > 0 && lobbyPlayers[0].id === socket.id;
-  if (isHost && lobbyPlayers.length >= 2) {
-    els.btnStartGame.style.display = "block";
-    els.hostOnlyMsg.style.display = "none";
   } else {
-    els.btnStartGame.style.display = "none";
-    els.hostOnlyMsg.style.display = "block";
-    if (isHost) {
-      els.hostOnlyMsg.textContent =
-        "Mindestens 2 Spieler erforderlich, um zu starten.";
-    } else {
-      els.hostOnlyMsg.textContent =
-        "Warten auf den Host, um das Spiel zu starten.";
-    }
+    if (els.loginScreen) els.loginScreen.classList.remove("active");
+    if (els.lobbyScreen) els.lobbyScreen.classList.remove("active");
+    if (els.gameScreen) els.gameScreen.classList.remove("active");
+
+    const el = document.getElementById(screenId);
+    if (el) el.classList.add("active");
   }
 }
+
+window.startScrabbleGameUI = function(roomState) {
+  localGameStarted = true;
+  transitionToScreen("game-screen");
+  autoFitBoard = false;
+  if (els.zoomSlider) els.zoomSlider.value = 107;
+  updateZoomScale(107);
+  setTimeout(centerBoard, 100);
+};
 
 // -------------------------------------------------------------
 // RENDERERS
@@ -1037,25 +952,29 @@ function updateTurnBanner() {
 
 // Recalculates points prediction during active turn placement
 function updateWordPreview() {
+  if (!els.wordPreviewContainer) {
+    els.wordPreviewContainer = document.getElementById("word-preview-container");
+  }
+
   if (localPlacedTiles.length === 0) {
-    els.wordValueOverlay.style.display = "none";
+    if (els.wordPreviewContainer) els.wordPreviewContainer.style.display = "none";
     return;
   }
 
   const prediction = ScrabbleEngine.calculateScore(gameBoard, localPlacedTiles);
 
   if (prediction.valid) {
-    els.wordValueOverlay.style.display = "block";
+    if (els.wordPreviewContainer) els.wordPreviewContainer.style.display = "flex";
 
     // Join main word and cross words
     const mainWord = prediction.words.map((w) => w.word).join(", ");
-    els.previewWordText.textContent = mainWord;
-    els.previewScoreText.textContent = prediction.score;
+    if (els.previewWordText) els.previewWordText.textContent = mainWord;
+    if (els.previewScoreText) els.previewScoreText.textContent = prediction.score;
   } else {
     // Show validation error status, don't hide completely to give direct gameplay feedback
-    els.wordValueOverlay.style.display = "block";
-    els.previewWordText.textContent = `[Plazierung ungültig: ${prediction.error}]`;
-    els.previewScoreText.textContent = "0";
+    if (els.wordPreviewContainer) els.wordPreviewContainer.style.display = "flex";
+    if (els.previewWordText) els.previewWordText.textContent = `[Plazierung ungültig: ${prediction.error}]`;
+    if (els.previewScoreText) els.previewScoreText.textContent = "0";
   }
 }
 

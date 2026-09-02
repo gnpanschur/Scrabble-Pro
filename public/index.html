@@ -3,97 +3,104 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Scrabble</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Scrabble Pro</title>
   <link rel="icon" type="image/x-icon" href="Scrabble.ico">
   <link rel="apple-touch-icon" href="Scrabble.ico">
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap"
-    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;800;900&display=swap" rel="stylesheet">
   <!-- CSS Stylesheet -->
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-  <!-- Background Glow Accents -->
-  <div class="glow glow-1"></div>
-  <div class="glow glow-2"></div>
+  <!-- Background Animated Glow -->
+  <div class="bg-glow"></div>
 
-  <!-- MAIN APP WRAPPER -->
   <main class="app-container">
 
-    <!-- LOBBY SCREEN (Lobby erstellen / beitreten) -->
-    <section id="lobby-screen" class="card active">
-      <header class="lobby-header" style="position: relative;">
-        <button class="btn-icon-circle fullscreen-toggle" title="Vollbild"
-          style="position: absolute; top: 0; right: 0;">⛶</button>
-        <h1 class="logo-text">Scrabble <span class="accent-text">Pro</span></h1>
-        <p class="subtitle-text">Das deutsche Wortduell</p>
-      </header>
+    <!-- ================= LOGIN / RAUM-ERSTELLEN SCREEN ================= -->
+    <section id="login-screen" class="screen active">
+      <div class="card-glass login-box">
+        <div class="logo-title">
+          <span class="letter">S</span>
+          <span class="letter">C</span>
+          <span class="letter">R</span>
+          <span class="letter">A</span>
+          <span class="letter">B</span>
+          <span class="letter">B</span>
+          <span class="letter">L</span>
+          <span class="letter">E</span>
+        </div>
+        <p class="subtitle">Das deutsche Wortduell</p>
 
-      <div class="lobby-form">
-        <div class="input-group">
-          <label for="player-name-input">Dein Name</label>
-          <input type="text" id="player-name-input" placeholder="Z.B. Max Mustermann" maxlength="15">
+        <div class="form-group">
+          <label for="player-name-input">Dein Spielername</label>
+          <input type="text" id="player-name-input" placeholder="z. B. Max" maxlength="15" autocomplete="off">
         </div>
 
-        <div class="actions-stack">
-          <button id="btn-join-lobby" class="btn btn-secondary">Spiel beitreten</button>
+        <div class="action-buttons">
+          <button id="btn-create-room" class="btn btn-primary btn-glow">
+            <span class="icon">✨</span> Raum Erstellen
+          </button>
 
-          <button id="btn-create-lobby" class="btn btn-primary">Spiel erstellen</button>
+          <div class="divider"><span>ODER</span></div>
 
-          <div class="input-group">
-            <label for="room-code-input">Lobby-Code (4-stellig)</label>
-            <input type="text" id="room-code-input" placeholder="Z.B. ABCD" maxlength="4"
-              style="text-transform: uppercase;">
+          <div class="join-group">
+            <input type="text" id="room-code-input" placeholder="CODE" maxlength="4" style="text-transform: uppercase;">
+            <button id="btn-join-room" class="btn btn-success">Beitreten</button>
           </div>
         </div>
+
+        <div id="login-error" class="error-message"></div>
       </div>
     </section>
 
-    <!-- WAITING ROOM SCREEN -->
-    <section id="waiting-screen" class="card">
-      <header class="lobby-header" style="position: relative;">
-        <button class="btn-icon-circle fullscreen-toggle" title="Vollbild"
-          style="position: absolute; top: 0; right: 0;">⛶</button>
-        <h1 class="logo-text">Lobby <span class="room-code-badge" id="lobby-code-display">----</span></h1>
-        <p class="subtitle-text">Warte auf Mitspieler...</p>
-      </header>
+    <!-- ================= LOBBY SCREEN ================= -->
+    <section id="lobby-screen" class="screen">
+      <div class="card-glass lobby-box">
+        <header class="lobby-header">
+          <h2>SPIEL-LOBBY</h2>
+          <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <button id="btn-share-whatsapp" class="btn-icon btn-whatsapp" title="Raumcode per WhatsApp teilen">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+              </svg>
+            </button>
+            <div class="room-code-badge" id="lobby-room-code-display" title="Klicken zum Kopieren">
+              <span>RAUMCODE:</span>
+              <strong id="display-room-code">----</strong>
+              <button id="btn-copy-code" class="btn-icon" title="Code kopieren">📋</button>
+            </div>
+          </div>
+        </header>
 
-      <!-- Share Stack -->
-      <div class="share-box">
-        <p class="share-title">Mitspieler einladen:</p>
-        <div class="share-row">
-          <span class="invite-link-text" id="invite-link-display">Link wird geladen...</span>
-          <button id="btn-copy-link" class="btn-icon" title="Link kopieren">
-            📋
+        <div class="players-section">
+          <h3>Spieler im Raum (<span id="player-count">0</span>/4)</h3>
+          <ul id="players-list" class="players-grid">
+            <!-- Dynamische Player-Karten -->
+          </ul>
+        </div>
+
+        <div class="lobby-footer">
+          <button id="btn-toggle-ready" class="btn btn-secondary">
+            Ready schalten
+          </button>
+          <button id="btn-start-game" class="btn btn-success btn-glow" style="display: none;">
+            Spiel Starten 🚀
+          </button>
+          <button id="btn-leave-lobby" class="btn btn-danger">
+            Verlassen
           </button>
         </div>
-        <button id="btn-whatsapp-share" class="btn btn-whatsapp">
-          <span>Auf WhatsApp teilen</span>
-        </button>
-      </div>
-
-      <!-- Player List in Lobby -->
-      <div class="player-list-section">
-        <h3>Bereitstehende Spieler (<span id="lobby-count-display">0</span>/4):</h3>
-        <ul id="lobby-player-list" class="players-list-grid">
-          <!-- Populated by JS -->
-        </ul>
-      </div>
-
-      <div class="waiting-actions">
-        <button id="btn-start-game" class="btn btn-primary" style="display: none;">Spiel starten</button>
-        <p id="host-only-msg" class="helper-text">Warten auf den Host, um das Spiel zu starten.</p>
       </div>
     </section>
 
-    <!-- GAME BOARD SCREEN -->
-    <section id="game-screen" class="game-layout">
+    <!-- ================= GAME BOARD SCREEN ================= -->
+    <section id="game-screen" class="screen game-layout">
       <!-- Top Navigation & Scoreboard -->
       <header class="game-header">
         <div class="game-meta-row">
@@ -102,7 +109,7 @@
           <div class="header-buttons">
             <button class="btn-icon-circle fullscreen-toggle" title="Vollbild">⛶</button>
             <button id="btn-open-options" class="btn-icon-circle" title="Optionen">⚙️</button>
-            <button id="btn-forfeit" class="btn btn-danger-sm">Aufgeben</button>
+            <button id="btn-forfeit" class="btn-icon-circle btn-forfeit-icon" title="Aufgeben">❌</button>
           </div>
         </div>
 
@@ -118,6 +125,11 @@
 
         <!-- Mini Player Chat under turn status banner -->
         <div class="chat-container-mini">
+          <!-- Wortvorschau im Chat-Container -->
+          <div id="word-preview-container" class="word-preview-mini" style="display: none;">
+            <span>Wort: <strong id="preview-word-text">---</strong> (<strong id="preview-score-text">0</strong> Pkt)</span>
+          </div>
+
           <div class="chat-messages-mini" id="chat-messages">
             <div class="chat-line-placeholder">Sag Hallo zu deinen Mitspielern!</div>
           </div>
@@ -130,11 +142,6 @@
 
       <!-- Main Playfield and Camera Control Wrapper -->
       <div class="board-viewport-container">
-        <!-- Live Wortwertanzeige Overlay -->
-        <div id="word-value-overlay" class="word-preview-badge" style="display: none;">
-          Aktuelles Wort: <span id="preview-word-text">---</span> (<span id="preview-score-text">0</span> Pkt)
-        </div>
-
         <!-- Zoomable Scroll Frame -->
         <div class="zoom-viewport" id="zoom-viewport">
           <div class="scrabble-board-grid" id="scrabble-board">
@@ -182,6 +189,15 @@
       </footer>
     </section>
 
+    <!-- ================= ROTATE DEVICE OVERLAY (FOR MOBILE LANDSCAPE) ================= -->
+    <div id="rotate-overlay" class="rotate-overlay">
+      <div class="card-glass rotate-box">
+        <div class="rotate-icon">📱↻</div>
+        <h3>Bitte Hochformat nutzen</h3>
+        <p>Dieses Spiel ist für das <strong>Portrait-Layout</strong> (Hochformat) optimiert. Bitte drehe dein Gerät vertikal.</p>
+      </div>
+    </div>
+
   </main>
 
   <!-- MODALS SYSTEM -->
@@ -202,20 +218,15 @@
           </label>
         </div>
 
-
-
         <div class="rules-section">
           <h3>📜 Kurze Spielregeln (Deutsch)</h3>
           <ul>
             <li>Der erste Spielzug muss das Center-Feld (Mitte mit Stern) abdecken.</li>
             <li>Wörter müssen waagerecht oder senkrecht gelegt werden und durchgehend sein.</li>
             <li>Jeder Zug muss an ein bestehendes Wort anknüpfen.</li>
-            <li><strong>Premiumfelder:</strong> Doppelte/Dreifache Buchstaben- (DL/TL) bzw. Wortwerte (DW/TW) gelten nur
-              für neu gelegte Steine in dieser Runde.</li>
+            <li><strong>Premiumfelder:</strong> Doppelte/Dreifache Buchstaben- (DL/TL) bzw. Wortwerte (DW/TW) gelten nur für neu gelegte Steine in dieser Runde.</li>
             <li><strong>Bingo:</strong> Wer alle 7 Steine in einem Zug legt, erhält 50 Punkte extra!</li>
-            <li><strong>Rechtsklick / Gedrückthalten:</strong> Du kannst Wörter im Verlauf oder auf dem Brett anklicken,
-              um die Bedeutung zu sehen oder sie als ungültig <strong>herauszufordern</strong>! Wenn das Wort doch
-              gültig ist, verlierst du 10 Punkte 🙂</li>
+            <li><strong>Rechtsklick / Gedrückthalten:</strong> Du kannst Wörter im Verlauf oder auf dem Brett anklicken, um die Bedeutung zu sehen oder sie als ungültig <strong>herauszufordern</strong>! Wenn das Wort doch gültig ist, verlierst du 10 Punkte 🙂</li>
           </ul>
         </div>
       </div>
@@ -259,17 +270,14 @@
 
         <div class="challenge-box-panel" id="challenge-panel" style="display: none;">
           <div class="alert alert-warning">
-            ⚠️ <strong>Herausforderung möglich:</strong> Wenn du glaubst, dass dieses Wort im deutschen Scrabble
-            ungültig ist, kannst du es herausfordern!
+            ⚠️ <strong>Herausforderung möglich:</strong> Wenn du glaubst, dass dieses Wort im deutschen Scrabble ungültig ist, kannst du es herausfordern!
           </div>
-          <p class="helper-text-sm">Bei Erfolg wird der gesamte Zug zurückgesetzt. Bei Misserfolg verlierst du 10
-            Punkte.</p>
+          <p class="helper-text-sm">Bei Erfolg wird der gesamte Zug zurückgesetzt. Bei Misserfolg verlierst du 10 Punkte.</p>
           <button id="btn-trigger-challenge" class="btn btn-danger w-full">Zug herausfordern!</button>
         </div>
 
         <div class="modal-actions-stacked">
-          <a id="link-dwds-lookup" href="#" target="_blank" rel="noopener noreferrer"
-            class="btn btn-secondary text-center">Im DWDS nachschlagen ↗</a>
+          <a id="link-dwds-lookup" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary text-center">Im DWDS nachschlagen ↗</a>
         </div>
       </div>
     </div>
@@ -329,8 +337,12 @@
     </div>
   </div>
 
-  <!-- Socket.IO from CDN (required for Capacitor since it doesn't host the backend) -->
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <!-- Socket.IO client library -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/shared/constants/lobbyEvents.js"></script>
+  <script src="js/lobbyConfig.js"></script>
+  <script src="js/socketClient.js"></script>
+  <script src="js/lobbyApp.js"></script>
   <script src="scrabble-engine.js"></script>
   <script src="app.js"></script>
 
@@ -339,7 +351,7 @@
     import { App } from 'https://unpkg.com/@capacitor/app@latest/dist/esm/index.js';
 
     App.addListener('backButton', ({ canGoBack }) => {
-      const isLobbyVisible = document.getElementById('lobby-screen').classList.contains('active');
+      const isLobbyVisible = document.getElementById('login-screen').classList.contains('active') || document.getElementById('lobby-screen').classList.contains('active');
       
       if (isLobbyVisible) {
         if (confirm('Möchtest du Scrabble Pro beenden?')) {

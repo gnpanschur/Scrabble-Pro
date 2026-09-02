@@ -3,6 +3,8 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const ScrabbleEngine = require('./public/scrabble-engine.js');
+const LobbyManager = require('./backend/lobby/LobbyManager');
+const LOBBY_EVENTS = require('./shared/constants/lobbyEvents');
 
 const app = express();
 const server = http.createServer(app);
@@ -13,31 +15,21 @@ const io = new Server(server, {
   }
 });
 
-// Serve static files from public directory
+// Serve static files from public directory & shared directory
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/shared', express.static(path.join(__dirname, 'shared')));
 
-// Fallback to index.html for lobby routing
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// Initialisiere Lobby-Manager
+const lobbyManager = new LobbyManager(io, {
+  gameId: 'scrabble_pro',
+  gameTitle: 'Scrabble Pro',
+  minPlayers: 2,
+  maxPlayers: 4,
+  requireReady: true
 });
 
-// In-memory database of active game rooms
-const rooms = new Map();
-
-/**
- * Generates a unique 4-character room ID
- */
-function generateRoomId() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Avoid ambiguous chars
-  let code = '';
-  do {
-    code = '';
-    for (let i = 0; i < 4; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-  } while (rooms.has(code));
-  return code;
-}
+// Active Scrabble Games (roomCode -> gameData)
+const scrabbleGames = new Map();
 
 /**
  * Creates a fresh, shuffled tile bag for German Scrabble
@@ -58,39 +50,86 @@ function createShuffledBag() {
 }
 
 /**
- * Extracts relevant game state for a specific player (securely hiding other players' racks)
+ * Broadcasts filtered state to each player in the room
  */
-function getPlayerState(room, socketId) {
-  return {
-    roomId: room.roomId,
-    gameStarted: room.gameStarted,
-    turnIndex: room.turnIndex,
-    activePlayerId: room.players[room.turnIndex]?.id || null,
-    board: room.board,
-    bagCount: room.bag.length,
-    history: room.history,
-    winner: room.winner || null,
-    players: room.players.map(p => ({
-      id: p.id,
-      name: p.name,
-      score: p.score,
-      rackCount: p.rack.length,
-      isActive: room.gameStarted && room.players[room.turnIndex]?.id === p.id,
-      connected: p.connected !== false
-    })),
-    myRack: room.players.find(p => p.id === socketId)?.rack || [],
-    canChallenge: room.gameStarted && room.history.length > 0 && !room.history[room.history.length - 1].challenged && !room.history[room.history.length - 1].system
-  };
+function broadcastScrabbleGameState(game) {
+  for (const player of game.players) {
+    const state = {
+      roomId: game.roomId,
+      gameStarted: game.gameStarted,
+      turnIndex: game.turnIndex,
+      activePlayerId: game.players[game.turnIndex]?.id || null,
+      board: game.board,
+      bagCount: game.bag.length,
+      history: game.history,
+      winner: game.winner || null,
+      players: game.players.map(p => ({
+        id: p.id,
+        name: p.name,
+        score: p.score,
+        rackCount: p.rack.length,
+        isActive: game.gameStarted && game.players[game.turnIndex]?.id === p.id,
+        connected: p.connected !== false
+      })),
+      myRack: game.players.find(p => p.id === player.id)?.rack || [],
+      canChallenge: game.gameStarted && game.history.length > 0 && !game.history[game.history.length - 1].challenged && !game.history[game.history.length - 1].system
+    };
+    io.to(player.id).emit('gameState', state);
+  }
 }
 
 /**
- * Broadcasts filtered state to each player in the room
+ * Gets active Scrabble game for a socket ID
  */
-function broadcastRoomState(room) {
-  for (const player of room.players) {
-    io.to(player.id).emit('gameState', getPlayerState(room, player.id));
-  }
+function getGameBySocket(socketId) {
+  const roomCode = lobbyManager.socketToRoomMap.get(socketId);
+  if (!roomCode) return null;
+  return scrabbleGames.get(roomCode) || null;
 }
+
+// Register onGameStart callback from LobbyManager
+lobbyManager.onGameStart((room, hostSocketId) => {
+  console.log(`[Server] Game started callback triggered for room ${room.code}`);
+  
+  const bag = createShuffledBag();
+  const board = Array(15).fill(null).map(() => Array(15).fill(null));
+
+  // Initialize players
+  const players = room.players.map((p) => {
+    const rack = [];
+    for (let i = 0; i < 7; i++) {
+      if (bag.length > 0) rack.push(bag.pop());
+    }
+    return {
+      id: p.id,
+      name: p.name,
+      score: 0,
+      rack: rack,
+      connected: true
+    };
+  });
+
+  const turnIndex = Math.floor(Math.random() * players.length);
+
+  const gameData = {
+    roomId: room.code,
+    gameStarted: true,
+    players: players,
+    board: board,
+    bag: bag,
+    turnIndex: turnIndex,
+    history: [{
+      id: 'start',
+      system: true,
+      text: 'Das Spiel hat begonnen! Viel Spaß!'
+    }],
+    previousState: null,
+    winner: null
+  };
+
+  scrabbleGames.set(room.code, gameData);
+  broadcastScrabbleGameState(gameData);
+});
 
 /**
  * Transcribes special German characters into URL-safe formats used by Duden.de
@@ -145,7 +184,6 @@ async function checkWordInWiktionary(word) {
           dudenFound = true;
           break;
         } else if (res.status !== 404) {
-          // 403, 429, 503, etc. indicates rate-limiting or blocks
           dudenBlockedOrFailed = true;
         }
       } catch (err) {
@@ -158,12 +196,10 @@ async function checkWordInWiktionary(word) {
       return true; // Valid in Duden
     }
 
-    // If Duden successfully returned 404 for all paths without blocking, it's invalid
     if (!dudenBlockedOrFailed && dudenUrls.length > 0) {
       return false; // Confirmed invalid in Duden
     }
 
-    // Otherwise, Duden request was blocked or failed, so we fall back to Wiktionary
     console.warn(`Duden check failed or was blocked for "${word}". Falling back to Wiktionary...`);
     return await checkWordInWiktionaryInternal(word);
   } catch (err) {
@@ -173,7 +209,7 @@ async function checkWordInWiktionary(word) {
 }
 
 /**
- * Fallback validator using the German Wiktionary API (verifies exact Level-2 German header)
+ * Fallback validator using the German Wiktionary API
  */
 async function checkWordInWiktionaryInternal(word) {
   try {
@@ -211,8 +247,8 @@ async function checkWordInWiktionaryInternal(word) {
     }
 
     if (allFailed) {
-      console.warn('Wiktionary API requests failed (network error, rate-limited, or blocked). Falling back to assuming word is valid.');
-      return true; // Fallback to true so the game doesn't break
+      console.warn('Wiktionary API requests failed. Falling back to assuming word is valid.');
+      return true;
     }
 
     for (const data of responses) {
@@ -225,7 +261,7 @@ async function checkWordInWiktionaryInternal(word) {
             const escapedTitle = page.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const headerRegex = new RegExp(`==\\s*${escapedTitle}\\s*\\(\\s*\\{\\{\\s*Sprache\\s*\\|\\s*Deutsch\\s*\\}\\}\\s*\\)\\s*==`, 'i');
             if (headerRegex.test(content)) {
-              return true; // Word exists and is a German entry!
+              return true;
             }
           }
         }
@@ -234,150 +270,60 @@ async function checkWordInWiktionaryInternal(word) {
     return false;
   } catch (err) {
     console.error('Wiktionary Check Failed:', err);
-    return true; // Fallback to true if network fails
+    return true;
   }
 }
 
-// Find room by socket ID
-function findRoomBySocket(socketId) {
-  for (const room of rooms.values()) {
-    if (room.players.some(p => p.id === socketId)) {
-      return room;
-    }
-  }
-  return null;
-}
-
+// Socket Connection Handler
 io.on('connection', (socket) => {
   console.log(`Socket connected: ${socket.id}`);
 
-  // Create Lobby
-  socket.on('createLobby', ({ name, playerId }) => {
-    const roomId = generateRoomId();
-    const room = {
-      roomId,
-      gameStarted: false,
-      players: [{ id: socket.id, persistentId: playerId, name: name || 'Spieler 1', score: 0, rack: [], connected: true }],
-      board: Array(15).fill(null).map(() => Array(15).fill(null)),
-      bag: createShuffledBag(),
-      turnIndex: 0,
-      history: [],
-      previousState: null,
-      winner: null
-    };
-    rooms.set(roomId, room);
-    socket.join(roomId);
-    
-    console.log(`Lobby created: ${roomId} by ${name}`);
-    socket.emit('lobbyCreated', { roomId });
-    broadcastRoomState(room);
-  });
-
-  // Join Lobby
-  socket.on('joinLobby', ({ name, roomId, playerId }) => {
-    const cleanRoomId = roomId.trim().toUpperCase();
-    const room = rooms.get(cleanRoomId);
-
-    if (!room) {
-      socket.emit('lobbyError', 'Lobby wurde nicht gefunden.');
-      return;
-    }
-    if (room.gameStarted) {
-      socket.emit('lobbyError', 'Das Spiel hat bereits begonnen.');
-      return;
-    }
-    if (room.players.length >= 4) {
-      socket.emit('lobbyError', 'Lobby ist voll (max. 4 Spieler).');
-      return;
-    }
-
-    const playerName = name || `Spieler ${room.players.length + 1}`;
-    room.players.push({ id: socket.id, persistentId: playerId, name: playerName, score: 0, rack: [], connected: true });
-    socket.join(cleanRoomId);
-
-    console.log(`${playerName} joined lobby ${cleanRoomId}`);
-    broadcastRoomState(room);
-  });
-
-  // Start Game
-  socket.on('startGame', () => {
-    const room = findRoomBySocket(socket.id);
-    if (!room) return;
-    if (room.players[0].id !== socket.id) {
-      socket.emit('lobbyError', 'Nur der Host kann das Spiel starten.');
-      return;
-    }
-
-    room.gameStarted = true;
-    room.bag = createShuffledBag();
-    room.board = Array(15).fill(null).map(() => Array(15).fill(null));
-    room.history = [{
-      id: 'start',
-      system: true,
-      text: 'Das Spiel hat begonnen! Viel Spaß!'
-    }];
-
-    // Draw initial 7 tiles for all players
-    for (const player of room.players) {
-      player.rack = [];
-      for (let i = 0; i < 7; i++) {
-        if (room.bag.length > 0) {
-          player.rack.push(room.bag.pop());
-        }
-      }
-    }
-
-    // Set random starting player
-    room.turnIndex = Math.floor(Math.random() * room.players.length);
-
-    console.log(`Game started in room ${room.roomId}. Turn: ${room.players[room.turnIndex].name}`);
-    broadcastRoomState(room);
-  });
+  // Attach LobbyManager standard listeners
+  lobbyManager.attachSocketListeners(socket);
 
   // Submit Turn
   socket.on('submitTurn', ({ tiles }) => {
-    const room = findRoomBySocket(socket.id);
-    if (!room || !room.gameStarted) return;
+    const game = getGameBySocket(socket.id);
+    if (!game || !game.gameStarted) return;
 
-    const playerIndex = room.players.findIndex(p => p.id === socket.id);
-    if (playerIndex !== room.turnIndex) {
+    const playerIndex = game.players.findIndex(p => p.id === socket.id);
+    if (playerIndex !== game.turnIndex) {
       socket.emit('turnError', 'Du bist nicht an der Reihe.');
       return;
     }
 
     // Calculate and validate placement
-    const result = ScrabbleEngine.calculateScore(room.board, tiles);
+    const result = ScrabbleEngine.calculateScore(game.board, tiles);
     if (!result.valid) {
       socket.emit('turnError', result.error);
       return;
     }
 
     // Backup current state for challenges
-    room.previousState = {
-      board: JSON.parse(JSON.stringify(room.board)),
-      players: JSON.parse(JSON.stringify(room.players)),
-      bag: [...room.bag],
-      turnIndex: room.turnIndex,
-      history: [...room.history]
+    game.previousState = {
+      board: JSON.parse(JSON.stringify(game.board)),
+      players: JSON.parse(JSON.stringify(game.players)),
+      bag: [...game.bag],
+      turnIndex: game.turnIndex,
+      history: [...game.history]
     };
 
     // Apply placed tiles to board
     for (const tile of tiles) {
-      room.board[tile.r][tile.c] = {
+      game.board[tile.r][tile.c] = {
         letter: tile.letter.toUpperCase(),
         isBlank: !!tile.isBlank
       };
     }
 
     // Update player score & rack
-    const player = room.players[playerIndex];
+    const player = game.players[playerIndex];
     player.score += result.score;
 
     for (const tile of tiles) {
-      // Remove used tile from rack
       let tileIndex = player.rack.indexOf(tile.letter);
       if (tileIndex === -1 && tile.isBlank) {
-        tileIndex = player.rack.indexOf(' '); // Blank tile
+        tileIndex = player.rack.indexOf(' ');
       }
       if (tileIndex !== -1) {
         player.rack.splice(tileIndex, 1);
@@ -387,13 +333,13 @@ io.on('connection', (socket) => {
     // Draw new tiles
     const drawCount = 7 - player.rack.length;
     for (let i = 0; i < drawCount; i++) {
-      if (room.bag.length > 0) {
-        player.rack.push(room.bag.pop());
+      if (game.bag.length > 0) {
+        player.rack.push(game.bag.pop());
       }
     }
 
     // Log in turn history
-    room.history.push({
+    game.history.push({
       id: Date.now().toString(),
       player: player.name,
       playerId: player.id,
@@ -404,75 +350,74 @@ io.on('connection', (socket) => {
     });
 
     // Advance turn
-    room.turnIndex = (room.turnIndex + 1) % room.players.length;
+    game.turnIndex = (game.turnIndex + 1) % game.players.length;
 
     // Check game over condition
-    // Game ends if bag is empty and one player has empty rack, or if all players pass twice
-    const outOfTiles = room.bag.length === 0 && room.players.some(p => p.rack.length === 0);
+    const outOfTiles = game.bag.length === 0 && game.players.some(p => p.rack.length === 0);
     if (outOfTiles) {
-      // Calculate final deductions (points remaining on other players' racks are subtracted from their scores, and added to the player who finished)
-      let finisherIndex = room.players.findIndex(p => p.rack.length === 0);
+      let finisherIndex = game.players.findIndex(p => p.rack.length === 0);
       let finisherBonus = 0;
-      room.players.forEach((p, idx) => {
+      game.players.forEach((p, idx) => {
         if (idx !== finisherIndex) {
           let rackDeduction = p.rack.reduce((sum, char) => sum + (ScrabbleEngine.TILE_VALUES[char] || 0), 0);
           p.score = Math.max(0, p.score - rackDeduction);
           finisherBonus += rackDeduction;
         }
       });
-      room.players[finisherIndex].score += finisherBonus;
+      if (finisherIndex !== -1) {
+        game.players[finisherIndex].score += finisherBonus;
+      }
 
-      // Find winner
       let highestScore = -1;
       let winnerName = '';
-      for (const p of room.players) {
+      for (const p of game.players) {
         if (p.score > highestScore) {
           highestScore = p.score;
           winnerName = p.name;
         }
       }
-      room.winner = winnerName;
-      room.history.push({
+      game.winner = winnerName;
+      game.history.push({
         id: 'gameover',
         system: true,
         text: `Spiel beendet! Gewinner: ${winnerName} mit ${highestScore} Punkten!`
       });
     }
 
-    broadcastRoomState(room);
+    broadcastScrabbleGameState(game);
   });
 
   // Pass Turn
   socket.on('passTurn', () => {
-    const room = findRoomBySocket(socket.id);
-    if (!room || !room.gameStarted) return;
+    const game = getGameBySocket(socket.id);
+    if (!game || !game.gameStarted) return;
 
-    const playerIndex = room.players.findIndex(p => p.id === socket.id);
-    if (playerIndex !== room.turnIndex) return;
+    const playerIndex = game.players.findIndex(p => p.id === socket.id);
+    if (playerIndex !== game.turnIndex) return;
 
-    const player = room.players[playerIndex];
+    const player = game.players[playerIndex];
 
-    room.history.push({
+    game.history.push({
       id: Date.now().toString(),
       system: true,
       text: `${player.name} hat gepasst.`
     });
 
-    room.turnIndex = (room.turnIndex + 1) % room.players.length;
-    broadcastRoomState(room);
+    game.turnIndex = (game.turnIndex + 1) % game.players.length;
+    broadcastScrabbleGameState(game);
   });
 
   // Swap Tiles
   socket.on('swapTiles', ({ letters }) => {
-    const room = findRoomBySocket(socket.id);
-    if (!room || !room.gameStarted || !letters || letters.length === 0) return;
+    const game = getGameBySocket(socket.id);
+    if (!game || !game.gameStarted || !letters || letters.length === 0) return;
 
-    const playerIndex = room.players.findIndex(p => p.id === socket.id);
-    if (playerIndex !== room.turnIndex) return;
+    const playerIndex = game.players.findIndex(p => p.id === socket.id);
+    if (playerIndex !== game.turnIndex) return;
 
-    const player = room.players[playerIndex];
+    const player = game.players[playerIndex];
 
-    if (room.bag.length < letters.length) {
+    if (game.bag.length < letters.length) {
       socket.emit('turnError', 'Nicht genügend Steine im Beutel für einen Tausch.');
       return;
     }
@@ -489,42 +434,39 @@ io.on('connection', (socket) => {
     // Draw new tiles
     const drawn = [];
     for (let i = 0; i < swappedLetters.length; i++) {
-      if (room.bag.length > 0) {
-        drawn.push(room.bag.pop());
+      if (game.bag.length > 0) {
+        drawn.push(game.bag.pop());
       }
     }
     player.rack.push(...drawn);
 
     // Put swapped tiles back and reshuffle
-    room.bag.push(...swappedLetters);
-    // Shuffle bag
-    for (let i = room.bag.length - 1; i > 0; i--) {
+    game.bag.push(...swappedLetters);
+    for (let i = game.bag.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [room.bag[i], room.bag[j]] = [room.bag[j], room.bag[i]];
+      [game.bag[i], game.bag[j]] = [game.bag[j], game.bag[i]];
     }
 
-    room.history.push({
+    game.history.push({
       id: Date.now().toString(),
       system: true,
       text: `${player.name} hat ${swappedLetters.length} Stein(e) getauscht.`
     });
 
-    // Advance turn
-    room.turnIndex = (room.turnIndex + 1) % room.players.length;
-    broadcastRoomState(room);
+    game.turnIndex = (game.turnIndex + 1) % game.players.length;
+    broadcastScrabbleGameState(game);
   });
 
   // Challenge Last Play
   socket.on('challengeTurn', async () => {
-    const room = findRoomBySocket(socket.id);
-    if (!room || !room.gameStarted || room.history.length === 0) return;
+    const game = getGameBySocket(socket.id);
+    if (!game || !game.gameStarted || game.history.length === 0) return;
 
-    const lastPlayIndex = [...room.history].reverse().findIndex(h => !h.system);
+    const lastPlayIndex = [...game.history].reverse().findIndex(h => !h.system);
     if (lastPlayIndex === -1) return;
     
-    // Find the actual index of the last play in the history array
-    const actualIndex = room.history.length - 1 - lastPlayIndex;
-    const lastTurn = room.history[actualIndex];
+    const actualIndex = game.history.length - 1 - lastPlayIndex;
+    const lastTurn = game.history[actualIndex];
 
     if (lastTurn.challenged) {
       socket.emit('challengeFeedback', { success: false, message: 'Dieser Zug wurde bereits herausgefordert.' });
@@ -535,7 +477,6 @@ io.on('connection', (socket) => {
     let allValid = true;
     const invalidWords = [];
 
-    // Check each word against Wiktionary
     for (const word of lastTurn.words) {
       const isValid = await checkWordInWiktionary(word);
       if (!isValid) {
@@ -546,51 +487,49 @@ io.on('connection', (socket) => {
 
     if (!allValid) {
       // SUCCESSFUL CHALLENGE - REVERT!
-      const playerWhoPlayed = room.previousState.players[room.previousState.turnIndex];
+      const playerWhoPlayed = game.previousState.players[game.previousState.turnIndex];
       
-      room.board = room.previousState.board;
-      room.players = room.previousState.players;
-      room.bag = room.previousState.bag;
-      room.turnIndex = room.previousState.turnIndex;
-      room.history = room.previousState.history;
+      game.board = game.previousState.board;
+      game.players = game.previousState.players;
+      game.bag = game.previousState.bag;
+      game.turnIndex = game.previousState.turnIndex;
+      game.history = game.previousState.history;
 
-      // Log successful challenge
-      room.history.push({
+      game.history.push({
         id: Date.now().toString(),
         system: true,
         text: `Herausforderung ERFOLGREICH! Der Zug von ${playerWhoPlayed.name} wurde zurückgesetzt, da die Wörter ungültig sind: ${invalidWords.join(', ')}.`
       });
 
-      // Turn is skipped (losses their turn). So we advance turnIndex to the next player.
-      room.turnIndex = (room.previousState.turnIndex + 1) % room.players.length;
+      game.turnIndex = (game.previousState.turnIndex + 1) % game.players.length;
 
-      io.to(room.roomId).emit('challengeNotification', {
+      io.to(game.roomId).emit('challengeNotification', {
         success: true,
         message: `Herausforderung erfolgreich! Der Zug von ${playerWhoPlayed.name} wurde gelöscht. Ungültige Wörter: ${invalidWords.join(', ')}.`
       });
     } else {
-      // FAILED CHALLENGE - challenger loses 10 points
-      const challenger = room.players.find(p => p.id === socket.id);
+      // FAILED CHALLENGE
+      const challenger = game.players.find(p => p.id === socket.id);
       if (challenger) {
         challenger.score = Math.max(0, challenger.score - 10);
       }
 
-      room.history.push({
+      game.history.push({
         id: Date.now().toString(),
         system: true,
         text: `${challenger ? challenger.name : 'Ein Spieler'} hat den Zug von ${lastTurn.player} erfolglos herausgefordert (-10 Punkte).`
       });
 
-      io.to(room.roomId).emit('challengeNotification', {
+      io.to(game.roomId).emit('challengeNotification', {
         success: false,
         message: `Herausforderung gescheitert! Alle Wörter (${lastTurn.words.join(', ')}) sind gültig. ${challenger ? challenger.name : ''} verliert 10 Punkte.`
       });
     }
 
-    broadcastRoomState(room);
+    broadcastScrabbleGameState(game);
   });
 
-  // Client requests dictionary validation of a specific word (on demand via right click)
+  // Client requests dictionary validation of a specific word
   socket.on('queryWordInfo', async ({ word }) => {
     const isValid = await checkWordInWiktionary(word);
     socket.emit('wordInfoResult', { word, isValid });
@@ -598,12 +537,12 @@ io.on('connection', (socket) => {
 
   // Handle Chat Message
   socket.on('sendChatMessage', ({ message }) => {
-    const room = findRoomBySocket(socket.id);
-    if (!room) return;
-    const player = room.players.find(p => p.id === socket.id);
+    const game = getGameBySocket(socket.id);
+    if (!game) return;
+    const player = game.players.find(p => p.id === socket.id);
     if (!player) return;
 
-    io.to(room.roomId).emit('chatMessage', {
+    io.to(game.roomId).emit('chatMessage', {
       sender: player.name,
       message: message.trim().slice(0, 60)
     });
@@ -611,81 +550,47 @@ io.on('connection', (socket) => {
 
   // Forfeit/Resign Game
   socket.on('resignGame', () => {
-    const room = findRoomBySocket(socket.id);
-    if (!room) return;
+    const game = getGameBySocket(socket.id);
+    if (!game) return;
 
-    const player = room.players.find(p => p.id === socket.id);
+    const player = game.players.find(p => p.id === socket.id);
     if (!player) return;
 
-    room.history.push({
+    game.history.push({
       id: Date.now().toString(),
       system: true,
       text: `${player.name} hat die Partie aufgegeben.`
     });
 
-    // Remove player
-    room.players = room.players.filter(p => p.id !== socket.id);
+    game.players = game.players.filter(p => p.id !== socket.id);
 
-    if (room.players.length === 0) {
-      rooms.delete(room.roomId);
+    if (game.players.length === 0) {
+      scrabbleGames.delete(game.roomId);
     } else {
-      // Re-adjust turn index
-      room.turnIndex = room.turnIndex % room.players.length;
-      broadcastRoomState(room);
+      game.turnIndex = game.turnIndex % game.players.length;
+      broadcastScrabbleGameState(game);
     }
   });
 
-  // Handle Disconnection
-  socket.on('disconnect', () => {
-    console.log(`Socket disconnected: ${socket.id}`);
-    const room = findRoomBySocket(socket.id);
-    if (room) {
-      const player = room.players.find(p => p.id === socket.id);
-      if (player) {
-        // If game has not started, remove player. Otherwise, keep them but mark them inactive/leave room
-        if (!room.gameStarted) {
-          room.players = room.players.filter(p => p.id !== socket.id);
-          if (room.players.length === 0) {
-            rooms.delete(room.roomId);
-          } else {
-            broadcastRoomState(room);
-          }
-        } else {
-          // Keep player in list so they can reconnect if needed, or if they left permanently:
-          // For simplicity, we can let them disconnect but notify other players.
-          player.connected = false;
-          room.history.push({
-            id: Date.now().toString(),
-            system: true,
-            text: `${player.name} hat die Verbindung getrennt.`
-          });
-          broadcastRoomState(room);
-        }
-      }
-    }
-  });
-
-  // Handle Player Reconnection
+  // Reconnect Player to Scrabble Game
   socket.on('reconnectPlayer', ({ roomId, playerId }) => {
     if (!roomId || !playerId) {
       socket.emit('reconnectFailed', 'Ungültige Anmeldedaten.');
       return;
     }
     const cleanRoomId = roomId.trim().toUpperCase();
-    const room = rooms.get(cleanRoomId);
-    if (room) {
-      const player = room.players.find(p => p.persistentId === playerId || p.id === playerId);
+    const game = scrabbleGames.get(cleanRoomId);
+    if (game) {
+      const player = game.players.find(p => p.persistentId === playerId || p.id === playerId);
       if (player) {
-        // Update the player's socket connection ID
         player.id = socket.id;
         player.connected = true;
         socket.join(cleanRoomId);
         
-        console.log(`${player.name} reconnected to room ${cleanRoomId} with new socket ${socket.id}`);
+        console.log(`${player.name} reconnected to game room ${cleanRoomId} with new socket ${socket.id}`);
         
-        // Push reconnect message in history if game is started
-        if (room.gameStarted) {
-          room.history.push({
+        if (game.gameStarted) {
+          game.history.push({
             id: Date.now().toString(),
             system: true,
             text: `${player.name} hat sich wieder verbunden.`
@@ -693,12 +598,17 @@ io.on('connection', (socket) => {
         }
         
         socket.emit('reconnectSuccess', { roomId: cleanRoomId });
-        broadcastRoomState(room);
+        broadcastScrabbleGameState(game);
         return;
       }
     }
     socket.emit('reconnectFailed', 'Lobby nicht gefunden oder Spieler nicht in dieser Lobby.');
   });
+});
+
+// Fallback to index.html for lobby routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 const PORT = process.env.PORT || 3000;
